@@ -13,6 +13,8 @@ namespace Suntail
         [SerializeField] private float interactionDistance = 3f;
         [Tooltip("Tag for door object")]
         [SerializeField] private string doorTag = "Door";
+        [Tooltip("Tag for boundary object")]
+        [SerializeField] private string boundaryTag = "Boundary";
         [Tooltip("Tag for pickable object")]
         [SerializeField] private string itemTag = "Item";
         [Tooltip("The player's main camera")]
@@ -37,6 +39,8 @@ namespace Suntail
         [SerializeField] private Text panelText;
         [Tooltip("Text when an object can be lifted")]
         [SerializeField] private string itemPickUpText;
+        [Tooltip("Text when the boundary can be seen")]
+        [SerializeField] private string boundaryText = "Purchase full ver.";
         [Tooltip("Text when an object can be drop")]
         [SerializeField] private string itemDropText;
         [Tooltip("Text when the door can be opened")]
@@ -90,6 +94,10 @@ namespace Suntail
                     {
                         _lookDoor.PlayDoorAnimation();
                     }
+                }
+                else if (interactionHit.collider.CompareTag(boundaryTag))
+                {
+                    ShowBoundaryUI();
                 }
             }
             else
@@ -180,6 +188,12 @@ namespace Suntail
             {
                 panelText.text = doorOpenText;
             }
+        }
+
+        private void ShowBoundaryUI()
+        {
+            uiPanel.gameObject.SetActive(true);
+            panelText.text = boundaryText;
         }
 
         private void ShowItemUI()
