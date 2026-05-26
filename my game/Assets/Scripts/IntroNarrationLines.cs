@@ -33,6 +33,7 @@ public class IntroNarrationLines : MonoBehaviour
     [Header("流程")]
     [SerializeField] private bool playOnStart;
 
+    private Coroutine playRoutine;
     private bool isPlaying;
     private Color textBaseColor;
     private CanvasGroup lastLineIconCanvasGroup;
@@ -66,7 +67,19 @@ public class IntroNarrationLines : MonoBehaviour
         if (isPlaying)
             return;
 
-        StartCoroutine(PlayRoutine());
+        playRoutine = StartCoroutine(PlayRoutine());
+    }
+
+    /// <summary>立刻停止旁白并清理 UI（跳过开场时调用）。</summary>
+    public void StopImmediately()
+    {
+        if (playRoutine != null)
+        {
+            StopCoroutine(playRoutine);
+            playRoutine = null;
+        }
+
+        Cleanup();
     }
 
     public IEnumerator PlayAndWait()
@@ -85,8 +98,7 @@ public class IntroNarrationLines : MonoBehaviour
         if (narrationLines == null || narrationLines.Length == 0)
         {
             Debug.LogWarning("[IntroNarrationLines] 没有旁白句子。", this);
-            IsFinished = true;
-            isPlaying = false;
+            Cleanup();
             yield break;
         }
 
@@ -115,10 +127,24 @@ public class IntroNarrationLines : MonoBehaviour
                 yield return new WaitForSeconds(gapBetweenLines);
         }
 
+        Cleanup();
+    }
+
+    void Cleanup()
+    {
         subtitleText.text = string.Empty;
         SetTextAlpha(0f);
+
+        if (lastLineIcon != null)
+        {
+            if (lastLineIconCanvasGroup != null)
+                lastLineIconCanvasGroup.alpha = 0f;
+            lastLineIcon.SetActive(false);
+        }
+
         IsFinished = true;
         isPlaying = false;
+        playRoutine = null;
     }
 
     string[] GetLines()
