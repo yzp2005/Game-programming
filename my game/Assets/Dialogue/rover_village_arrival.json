@@ -1,0 +1,41 @@
+{
+  "id": "rover_village_arrival",
+  "title": "Arrival at the village — Rover monologue",
+  "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+  },
+  "lines": [
+    {
+      "id": "line_001",
+      "type": "line",
+      "speakerName": "Rover",
+      "text": "This village looks quiet enough... maybe I can stay here for a few days."
+    },
+    {
+      "id": "line_002",
+      "type": "line",
+      "speakerName": "Rover",
+      "text": "Hm? Wait a second—"
+    },
+    {
+      "id": "line_003",
+      "type": "line",
+      "speakerName": "Rover",
+      "text": "There's a mana fluctuation nearby... and it's not small. Something's stirring out there."
+    },
+    {
+      "id": "line_004",
+      "type": "line",
+      "speakerName": "Rover",
+      "text": "Hey, is anyone around? I need to ask someone about this."
+    },
+    {
+      "id": "line_005",
+      "type": "line",
+      "speakerName": "Rover",
+      "text": "...This is not what I signed up for when I was looking for a place to rest."
+    }
+  ]
+}

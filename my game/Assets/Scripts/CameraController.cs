@@ -19,8 +19,11 @@ public class CameraController : MonoBehaviour
 
     void Start()
     {
-        Cursor.visible = false;
-        Cursor.lockState = CursorLockMode.Locked;
+        if (!PlayerInputLock.IsLocked)
+        {
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+        }
 
         yaw = transform.eulerAngles.y;
         pitch = transform.eulerAngles.x;
@@ -34,6 +37,9 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
+        if (PlayerInputLock.IsLocked)
+            return;
+
         // 只在按住左键 或 右键时 允许旋转视角
         if (Input.GetMouseButton(0) || Input.GetMouseButton(1))
         {
@@ -52,31 +58,31 @@ public class CameraController : MonoBehaviour
     {
         if (target == null) return;
 
-        bool isJumping = _characterController != null && !_characterController.isGrounded;
-
-        if (isJumping)
+        if (!PlayerInputLock.IsLocked)
         {
-            if (Input.GetMouseButton(1))
+            bool isJumping = _characterController != null && !_characterController.isGrounded;
+
+            if (isJumping)
             {
-                _hasRightButtonBeenReleasedSinceAir = false;
+                if (Input.GetMouseButton(1))
+                    _hasRightButtonBeenReleasedSinceAir = false;
             }
+            else
+            {
+                if (Input.GetMouseButtonUp(1))
+                    _hasRightButtonBeenReleasedSinceAir = true;
+                if (!Input.GetMouseButton(1))
+                    _hasRightButtonBeenReleasedSinceAir = true;
+            }
+
+            bool canZoom = !isJumping && Input.GetMouseButton(1) && _hasRightButtonBeenReleasedSinceAir;
+            Vector3 targetOffset = canZoom ? zoomOffset : offset;
+            currentOffset = Vector3.Lerp(currentOffset, targetOffset, zoomSmooth * Time.deltaTime);
         }
         else
         {
-            if (Input.GetMouseButtonUp(1))
-            {
-                _hasRightButtonBeenReleasedSinceAir = true;
-            }
-            // 与 CharactorController 一致：空中松开后落地不会收到 MouseButtonUp，需在地上且未按右键时恢复
-            if (!Input.GetMouseButton(1))
-            {
-                _hasRightButtonBeenReleasedSinceAir = true;
-            }
+            currentOffset = Vector3.Lerp(currentOffset, offset, zoomSmooth * Time.deltaTime);
         }
-
-        bool canZoom = !isJumping && Input.GetMouseButton(1) && _hasRightButtonBeenReleasedSinceAir;
-        Vector3 targetOffset = canZoom ? zoomOffset : offset;
-        currentOffset = Vector3.Lerp(currentOffset, targetOffset, zoomSmooth * Time.deltaTime);
 
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
         Vector3 position = target.position + rotation * currentOffset;
