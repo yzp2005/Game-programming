@@ -14,6 +14,11 @@ public class PlayerInputLockController : MonoBehaviour
     [SerializeField] private bool enableToggleKey = true;
     [SerializeField] private KeyCode toggleKey = KeyCode.L;
 
+    [Header("状态（运行时同步，只读）")]
+    [SerializeField] private bool isLocked;
+
+    public bool IsLocked => isLocked;
+
     void Awake()
     {
         if (lockOnStart)
@@ -22,6 +27,8 @@ public class PlayerInputLockController : MonoBehaviour
 
     void Update()
     {
+        isLocked = PlayerInputLock.IsLocked;
+
         if (!enableToggleKey || !Input.GetKeyDown(toggleKey))
             return;
 

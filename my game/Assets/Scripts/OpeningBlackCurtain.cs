@@ -15,15 +15,15 @@ public class OpeningBlackCurtain : MonoBehaviour
     [SerializeField] private float holdAfterNarration = 2f;
     [Tooltip("从黑到完全透明的渐变时长（秒）")]
     [SerializeField] private float fadeDuration = 1f;
-    [Tooltip("点击跳过后，黑幕淡出的时长（秒）")]
+    [Tooltip("按 E 跳过后，黑幕淡出的时长（秒）")]
     [SerializeField] private float skipFadeDuration = 0.35f;
 
     [Header("流程")]
     [SerializeField] private bool playOnStart = true;
     [SerializeField] private bool lockPlayerInput = true;
-    [Tooltip("勾选后黑幕结束再调用 DialogueReader；请将 DialogueReader 的 Play On Start 关掉")]
-    [SerializeField] private bool startDialogueAfterFade;
+    [SerializeField] private bool startDialogueAfterFade = true;
     [SerializeField] private DialogueReader dialogueReader;
+    [SerializeField] private TextAsset dialogueAfterFade;
 
     [Header("逐句旁白（可选）")]
     [SerializeField] private IntroNarrationLines narration;
@@ -37,6 +37,8 @@ public class OpeningBlackCurtain : MonoBehaviour
     private Coroutine sequenceCoroutine;
     private bool isPlaying;
     private bool skipRequested;
+
+    public bool IsIntroPlaying => isPlaying;
 
     void Awake()
     {
@@ -140,14 +142,16 @@ public class OpeningBlackCurtain : MonoBehaviour
     {
         canvasGroup.alpha = 0f;
         canvasGroup.blocksRaycasts = false;
-        gameObject.SetActive(false);
 
         if (skipButtonRoot != null)
             skipButtonRoot.SetActive(false);
 
-        if (startDialogueAfterFade && dialogueReader != null)
-            dialogueReader.StartReading();
-        else if (lockPlayerInput)
+        if (startDialogueAfterFade && dialogueReader != null && dialogueAfterFade != null)
+            dialogueReader.StartReading(dialogueAfterFade);
+
+        gameObject.SetActive(false);
+
+        if (!startDialogueAfterFade && lockPlayerInput)
             PlayerInputLock.SetLocked(false);
 
         isPlaying = false;

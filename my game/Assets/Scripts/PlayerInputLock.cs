@@ -17,9 +17,7 @@ public static class PlayerInputLock
     /// <param name="dialogueCursor">锁定时是否显示鼠标（给对话 UI 点击用）。</param>
     public static void SetLocked(bool locked, bool dialogueCursor = true)
     {
-        if (IsLocked == locked)
-            return;
-
+        bool changed = IsLocked != locked;
         IsLocked = locked;
 
         if (locked)
@@ -32,7 +30,8 @@ public static class PlayerInputLock
             ApplyGameplayCursor();
         }
 
-        OnLockChanged?.Invoke(IsLocked);
+        if (changed)
+            OnLockChanged?.Invoke(IsLocked);
     }
 
     public static void ApplyDialogueCursor()

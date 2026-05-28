@@ -1,16 +1,15 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 /// <summary>
-/// 左上角跳过按钮：点击 TMP 后跳过开场黑幕与旁白。
-/// 需场景中有 EventSystem；TMP 需开启 Raycast Target。
+/// 开场跳过提示：显示在左上角，按 E 跳过黑幕与旁白。
 /// </summary>
 [RequireComponent(typeof(TMP_Text))]
-public class IntroSkipButton : MonoBehaviour, IPointerClickHandler
+public class IntroSkipButton : MonoBehaviour
 {
     [SerializeField] private OpeningBlackCurtain blackCurtain;
-    [SerializeField] private string label = "Skip";
+    [SerializeField] private KeyCode skipKey = KeyCode.E;
+    [SerializeField] private string label = "Skip(press 'e')";
 
     private TMP_Text tmp;
 
@@ -18,12 +17,15 @@ public class IntroSkipButton : MonoBehaviour, IPointerClickHandler
     {
         tmp = GetComponent<TMP_Text>();
         tmp.text = label;
-        tmp.raycastTarget = true;
+        tmp.raycastTarget = false;
     }
 
-    public void OnPointerClick(PointerEventData eventData)
+    void Update()
     {
-        if (blackCurtain != null)
+        if (blackCurtain == null || !blackCurtain.IsIntroPlaying)
+            return;
+
+        if (Input.GetKeyDown(skipKey))
             blackCurtain.SkipIntro();
     }
 }

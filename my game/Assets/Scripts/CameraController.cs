@@ -11,11 +11,22 @@ public class CameraController : MonoBehaviour
     public float maxPitch = 60f;
     public float zoomSmooth = 5f;
 
+    [Header("室内镜头")]
+    [SerializeField] private Vector3 indoorOffset = new Vector3(0f, 1.8f, -2.5f);
+    [SerializeField] private float indoorBlendSpeed = 4f;
+
     private float yaw = 0f;
     private float pitch = 0f;
     private Vector3 currentOffset;
+    private int indoorZoneCount;
     private CharacterController _characterController;
     private bool _hasRightButtonBeenReleasedSinceAir = true;
+
+    public bool IsIndoor => indoorZoneCount > 0;
+
+    public void EnterIndoorZone() => indoorZoneCount++;
+
+    public void ExitIndoorZone() => indoorZoneCount = Mathf.Max(0, indoorZoneCount - 1);
 
     void Start()
     {
@@ -30,9 +41,7 @@ public class CameraController : MonoBehaviour
         currentOffset = offset;
 
         if (target != null)
-        {
             _characterController = target.GetComponent<CharacterController>();
-        }
     }
 
     void Update()
@@ -40,7 +49,6 @@ public class CameraController : MonoBehaviour
         if (PlayerInputLock.IsLocked)
             return;
 
-        // 只在按住左键 或 右键时 允许旋转视角
         if (Input.GetMouseButton(0) || Input.GetMouseButton(1))
         {
             float mouseX = Input.GetAxis("Mouse X");
@@ -50,13 +58,15 @@ public class CameraController : MonoBehaviour
             pitch -= mouseY * mouseSensitivity;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
         }
-
-        // 删掉你原来乱切换鼠标显隐的代码，不要手动改
     }
 
     void LateUpdate()
     {
-        if (target == null) return;
+        if (target == null)
+            return;
+
+        Vector3 baseOffset = IsIndoor ? indoorOffset : offset;
+        float blendSpeed = IsIndoor ? indoorBlendSpeed : zoomSmooth;
 
         if (!PlayerInputLock.IsLocked)
         {
@@ -76,18 +86,16 @@ public class CameraController : MonoBehaviour
             }
 
             bool canZoom = !isJumping && Input.GetMouseButton(1) && _hasRightButtonBeenReleasedSinceAir;
-            Vector3 targetOffset = canZoom ? zoomOffset : offset;
-            currentOffset = Vector3.Lerp(currentOffset, targetOffset, zoomSmooth * Time.deltaTime);
+            Vector3 targetOffset = canZoom ? zoomOffset : baseOffset;
+            currentOffset = Vector3.Lerp(currentOffset, targetOffset, blendSpeed * Time.deltaTime);
         }
         else
         {
-            currentOffset = Vector3.Lerp(currentOffset, offset, zoomSmooth * Time.deltaTime);
+            currentOffset = Vector3.Lerp(currentOffset, baseOffset, blendSpeed * Time.deltaTime);
         }
 
         Quaternion rotation = Quaternion.Euler(pitch, yaw, 0);
-        Vector3 position = target.position + rotation * currentOffset;
-
         transform.rotation = rotation;
-        transform.position = position;
+        transform.position = target.position + rotation * currentOffset;
     }
 }
