@@ -33,12 +33,18 @@ public class IntroNarrationLines : MonoBehaviour
     [Header("流程")]
     [SerializeField] private bool playOnStart;
 
+    [Header("跳到末句（按 E）")]
+    [SerializeField] private float skipCrossfadeOutDuration = 0.35f;
+    [SerializeField] private float skipCrossfadeInDuration = 0.5f;
+
     private Coroutine playRoutine;
     private bool isPlaying;
+    private bool pendingSkipToLastLine;
     private Color textBaseColor;
     private CanvasGroup lastLineIconCanvasGroup;
 
     public bool IsFinished { get; private set; }
+    public bool IsPlaying => isPlaying;
 
     void Awake()
     {
@@ -67,10 +73,29 @@ public class IntroNarrationLines : MonoBehaviour
         if (isPlaying)
             return;
 
-        playRoutine = StartCoroutine(PlayRoutine());
+        playRoutine = StartCoroutine(pendingSkipToLastLine ? SkipToLastLineRoutine() : PlayRoutine());
+        pendingSkipToLastLine = false;
     }
 
-    /// <summary>立刻停止旁白并清理 UI（跳过开场时调用）。</summary>
+    /// <summary>平滑过渡到最后一句话（不直接结束旁白）。</summary>
+    public void SkipToLastLineSmooth()
+    {
+        if (IsFinished)
+            return;
+
+        pendingSkipToLastLine = true;
+
+        if (!isPlaying)
+            return;
+
+        if (playRoutine != null)
+            StopCoroutine(playRoutine);
+
+        playRoutine = StartCoroutine(SkipToLastLineRoutine());
+        pendingSkipToLastLine = false;
+    }
+
+    /// <summary>立刻停止旁白并清理 UI（紧急中止时用）。</summary>
     public void StopImmediately()
     {
         if (playRoutine != null)
@@ -126,6 +151,44 @@ public class IntroNarrationLines : MonoBehaviour
             if (gapBetweenLines > 0f && !isLastLine)
                 yield return new WaitForSeconds(gapBetweenLines);
         }
+
+        Cleanup();
+    }
+
+    IEnumerator SkipToLastLineRoutine()
+    {
+        isPlaying = true;
+        IsFinished = false;
+        subtitleText.gameObject.SetActive(true);
+
+        string[] narrationLines = GetLines();
+        if (narrationLines == null || narrationLines.Length == 0)
+        {
+            Debug.LogWarning("[IntroNarrationLines] 没有旁白句子。", this);
+            Cleanup();
+            yield break;
+        }
+
+        float currentAlpha = subtitleText.color.a;
+        if (currentAlpha > 0.01f)
+            yield return FadeAlpha(currentAlpha, 0f, skipCrossfadeOutDuration);
+        else
+            SetTextAlpha(0f);
+
+        if (lastLineIcon != null && lastLineIcon.activeSelf)
+            yield return HideLastLineIcon();
+
+        string lastLine = narrationLines[narrationLines.Length - 1];
+        yield return ShowLastLineIcon();
+
+        subtitleText.text = lastLine;
+        yield return FadeAlpha(0f, 1f, skipCrossfadeInDuration);
+
+        if (displayDuration > 0f)
+            yield return new WaitForSeconds(displayDuration);
+
+        yield return FadeAlpha(1f, 0f, fadeOutDuration);
+        yield return HideLastLineIcon();
 
         Cleanup();
     }

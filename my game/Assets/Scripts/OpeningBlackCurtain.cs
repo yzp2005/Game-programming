@@ -15,9 +15,6 @@ public class OpeningBlackCurtain : MonoBehaviour
     [SerializeField] private float holdAfterNarration = 2f;
     [Tooltip("从黑到完全透明的渐变时长（秒）")]
     [SerializeField] private float fadeDuration = 1f;
-    [Tooltip("按 E 跳过后，黑幕淡出的时长（秒）")]
-    [SerializeField] private float skipFadeDuration = 0.35f;
-
     [Header("流程")]
     [SerializeField] private bool playOnStart = true;
     [SerializeField] private bool lockPlayerInput = true;
@@ -33,10 +30,16 @@ public class OpeningBlackCurtain : MonoBehaviour
     [Header("跳过")]
     [SerializeField] private GameObject skipButtonRoot;
 
+    [Header("对话结束后任务")]
+    [SerializeField] private QuestDisplay questDisplay;
+
+    private const string IntroQuestName = "Find the villager";
+    private const string IntroQuestContent = "Find a villager and talk with him";
+
     private CanvasGroup canvasGroup;
     private Coroutine sequenceCoroutine;
     private bool isPlaying;
-    private bool skipRequested;
+    private bool skipToLastLineRequested;
 
     public bool IsIntroPlaying => isPlaying;
 
@@ -66,18 +69,18 @@ public class OpeningBlackCurtain : MonoBehaviour
         if (isPlaying)
             return;
 
-        skipRequested = false;
+        skipToLastLineRequested = false;
         sequenceCoroutine = StartCoroutine(PlaySequence());
     }
 
-    /// <summary>跳过黑幕与旁白，直接进入淡出 / 对话。</summary>
+    /// <summary>平滑跳到黑幕旁白最后一句，之后仍按正常节奏淡出黑幕。</summary>
     public void SkipIntro()
     {
-        if (!isPlaying || skipRequested)
+        if (!isPlaying || skipToLastLineRequested)
             return;
 
-        skipRequested = true;
-        narration?.StopImmediately();
+        skipToLastLineRequested = true;
+        narration?.SkipToLastLineSmooth();
     }
 
     IEnumerator PlaySequence()
@@ -89,27 +92,24 @@ public class OpeningBlackCurtain : MonoBehaviour
         if (lockPlayerInput)
             PlayerInputLock.SetLocked(true);
 
-        if (!skipRequested)
+        if (!skipToLastLineRequested)
             yield return WaitSeconds(holdBeforeNarration);
 
-        if (!skipRequested && narration != null)
+        if (narration != null)
         {
+            // 黑幕前按 E 时，Begin 会通过 pendingSkipToLastLine 直接进入末句流程
             narration.Begin();
 
             if (waitForNarrationBeforeFade)
             {
-                while (!narration.IsFinished && !skipRequested)
+                while (!narration.IsFinished)
                     yield return null;
             }
         }
 
-        if (skipRequested)
-            narration?.StopImmediately();
+        yield return WaitSeconds(holdAfterNarration);
 
-        if (!skipRequested)
-            yield return WaitSeconds(holdAfterNarration);
-
-        float fadeTime = skipRequested ? skipFadeDuration : fadeDuration;
+        float fadeTime = fadeDuration;
         if (fadeTime > 0f)
         {
             float elapsed = 0f;
@@ -131,7 +131,7 @@ public class OpeningBlackCurtain : MonoBehaviour
             yield break;
 
         float elapsed = 0f;
-        while (elapsed < duration && !skipRequested)
+        while (elapsed < duration && !skipToLastLineRequested)
         {
             elapsed += Time.deltaTime;
             yield return null;
@@ -147,7 +147,12 @@ public class OpeningBlackCurtain : MonoBehaviour
             skipButtonRoot.SetActive(false);
 
         if (startDialogueAfterFade && dialogueReader != null && dialogueAfterFade != null)
+        {
+            dialogueReader.ReadingFinished += OnDialogueDone;
             dialogueReader.StartReading(dialogueAfterFade);
+        }
+        else
+            OnDialogueDone();
 
         gameObject.SetActive(false);
 
@@ -155,7 +160,24 @@ public class OpeningBlackCurtain : MonoBehaviour
             PlayerInputLock.SetLocked(false);
 
         isPlaying = false;
-        skipRequested = false;
+        skipToLastLineRequested = false;
         sequenceCoroutine = null;
+    }
+
+    void OnDialogueDone()
+    {
+        if (dialogueReader != null)
+            dialogueReader.ReadingFinished -= OnDialogueDone;
+
+        if (questDisplay == null)
+            questDisplay = FindObjectOfType<QuestDisplay>(true);
+
+        if (questDisplay == null)
+        {
+            Debug.LogWarning("[OpeningBlackCurtain] 未指定 Quest Display。", this);
+            return;
+        }
+
+        questDisplay.SetCurrentQuest(IntroQuestName, IntroQuestContent);
     }
 }

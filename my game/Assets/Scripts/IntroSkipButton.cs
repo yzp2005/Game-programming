@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// 开场跳过提示：显示在左上角，按 E 跳过黑幕与旁白。
+/// 开场跳过提示：按 E 平滑跳到黑幕旁白最后一句，再正常淡出黑幕。
 /// </summary>
 [RequireComponent(typeof(TMP_Text))]
 public class IntroSkipButton : MonoBehaviour

@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 
@@ -19,6 +20,9 @@ public class DialogueReader : MonoBehaviour
     private bool lockedByThisReader;
 
     public bool IsPlaying => data != null;
+
+    /// <summary>对话正常播完（最后一句点过）时触发。</summary>
+    public event Action ReadingFinished;
 
     void Awake()
     {
@@ -90,6 +94,7 @@ public class DialogueReader : MonoBehaviour
             dialoguePanel.SetActive(false);
 
         UnlockPlayer();
+        ReadingFinished?.Invoke();
     }
 
     void LockPlayer()

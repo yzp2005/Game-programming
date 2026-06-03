@@ -18,6 +18,8 @@ public class CharactorController : MonoBehaviour
     private const float MoveInputThreshold = 0.0001f;
     private const float AimDirectionMinSqr = 0.01f;
     private const float GroundedStickVelocity = -2f;
+    /// <summary>近距碰撞（室内墙、相机视差）不参与瞄准，改用屏幕中心射线方向。</summary>
+    [SerializeField] private float minAimHitDistance = 2.5f;
 
     private static readonly int AnimParam = Animator.StringToHash("animation");
     private static readonly int UpperAnimParam = Animator.StringToHash("upperanimation");
@@ -321,30 +323,38 @@ public class CharactorController : MonoBehaviour
             camAnim.Play(camAnim.clip.name);
 
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        Vector3 targetPoint = GetAimWorldPoint(ray, 1000f);
-        Vector3 direction = GetFireDirection(ray, targetPoint);
+        Vector3 direction = GetFireDirection(ray);
 
         GameObject prefab = projectilePrefabs[currentProjectileIndex];
         Instantiate(prefab, firePoint.transform.position, Quaternion.LookRotation(direction));
     }
 
-    private Vector3 GetFireDirection(Ray ray, Vector3 targetPoint)
+    /// <summary>
+    /// 与屏幕中心一致；近处墙体不参与计算，避免室内镜头偏移后的视差偏弹。
+    /// </summary>
+    private Vector3 GetFireDirection(Ray ray)
     {
-        Vector3 toTarget = targetPoint - firePoint.transform.position;
+        if (TryGetAimHit(ray, 1000f, out RaycastHit hit))
+        {
+            Vector3 toTarget = hit.point - firePoint.transform.position;
+            if (toTarget.sqrMagnitude >= AimDirectionMinSqr)
+                return toTarget.normalized;
+        }
 
-        if (toTarget.sqrMagnitude < AimDirectionMinSqr)
-            return ray.direction.normalized;
+        Vector3 aim = ray.direction;
+        aim.y = 0f;
+        if (aim.sqrMagnitude >= AimDirectionMinSqr)
+            return aim.normalized;
 
-        Vector3 direction = toTarget.normalized;
-        return direction.sqrMagnitude < 1e-6f ? ray.direction.normalized : direction;
+        return ray.direction.normalized;
     }
 
-    /// <summary>视口中心射线，跳过角色自身碰撞体。</summary>
-    private Vector3 GetAimWorldPoint(Ray ray, float maxDistance)
+    private bool TryGetAimHit(Ray ray, float maxDistance, out RaycastHit bestHit)
     {
-        RaycastHit[] hits = Physics.RaycastAll(ray, maxDistance);
+        bestHit = default;
+        RaycastHit[] hits = Physics.RaycastAll(ray, maxDistance, ~0, QueryTriggerInteraction.Ignore);
         if (hits == null || hits.Length == 0)
-            return ray.GetPoint(maxDistance);
+            return false;
 
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
@@ -352,10 +362,15 @@ public class CharactorController : MonoBehaviour
         {
             if (hit.collider == null || IsUnderSameCharacter(hit.collider.transform))
                 continue;
-            return hit.point;
+
+            if (hit.distance < minAimHitDistance)
+                continue;
+
+            bestHit = hit;
+            return true;
         }
 
-        return ray.GetPoint(maxDistance);
+        return false;
     }
 
     private bool IsUnderSameCharacter(Transform t)
