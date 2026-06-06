@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 挂到玩家法球/弹道预制体上，碰撞时对怪物 Health 造成伤害。
+/// 挂到玩家法球/弹道预制体上，碰撞时对怪物 MonsterHealth 造成伤害。
 /// </summary>
 [DisallowMultipleComponent]
 public class ProjectileDamage : MonoBehaviour
@@ -20,7 +20,7 @@ public class ProjectileDamage : MonoBehaviour
 
     void TryDamage(Collider col)
     {
-        Health health = col.GetComponentInParent<Health>();
+        MonsterHealth health = col.GetComponentInParent<MonsterHealth>();
         if (health != null && !health.IsDead)
             health.TakeDamage(damage);
     }

@@ -9,6 +9,6 @@ EditorBuildSettings:
     path: Assets/Scenes/Suntail Village.unity
     guid: f92dfda6574c0dd4bb785010bc97a9a0
   - enabled: 1
-    path: Assets/Scenes/New Scene.unity
-    guid: 99ac2b17c99dfb649af30b1cfa90662d
+    path: Assets/Scenes/North Village.unity
+    guid: 027d7e208471a0a4bb6c05ae982e9c6d
   m_configObjects: {}

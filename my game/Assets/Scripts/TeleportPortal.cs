@@ -7,7 +7,12 @@ public class TeleportPortal : MonoBehaviour
     [SerializeField] private GameObject promptRoot;
     [SerializeField] private TMP_Text promptText;
     [SerializeField] private string promptMessage = "Teleport [F]";
-    [SerializeField] private Transform destination;
+
+    [Header("切换场景")]
+    [Tooltip("File → Build Settings 里 Scenes In Build 左侧的序号，从 0 开始")]
+    [SerializeField] private int targetSceneBuildIndex = 1;
+    [Tooltip("与目标场景 PlayerSpawnPoint 的 Spawn Id 一致")]
+    [SerializeField] private string targetSpawnId;
 
     [Header("Debug（运行时只读）")]
     [SerializeField] private bool _inside;
@@ -45,26 +50,13 @@ public class TeleportPortal : MonoBehaviour
 
         ShowPrompt();
 
-        if (!Input.GetKeyDown(KeyCode.F) || destination == null || _player == null)
+        if (!Input.GetKeyDown(KeyCode.F) || _player == null)
             return;
 
-        TeleportPlayer();
-    }
+        if (string.IsNullOrEmpty(targetSpawnId))
+            return;
 
-    void TeleportPlayer()
-    {
-        CharacterController cc = _player.GetComponent<CharacterController>();
-        if (cc != null)
-            cc.enabled = false;
-
-        _player.position = destination.position;
-
-        if (cc != null)
-            cc.enabled = true;
-
-        _inside = false;
-        _player = null;
-        HidePrompt();
+        SceneLoadRunner.LoadScene(targetSceneBuildIndex, targetSpawnId);
     }
 
     void OnTriggerEnter(Collider other)

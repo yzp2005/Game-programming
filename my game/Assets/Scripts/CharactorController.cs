@@ -18,8 +18,6 @@ public class CharactorController : MonoBehaviour
     private const float MoveInputThreshold = 0.0001f;
     private const float AimDirectionMinSqr = 0.01f;
     private const float GroundedStickVelocity = -2f;
-    /// <summary>近距碰撞（室内墙、相机视差）不参与瞄准，改用屏幕中心射线方向。</summary>
-    [SerializeField] private float minAimHitDistance = 2.5f;
 
     private static readonly int AnimParam = Animator.StringToHash("animation");
     private static readonly int UpperAnimParam = Animator.StringToHash("upperanimation");
@@ -41,6 +39,9 @@ public class CharactorController : MonoBehaviour
     public GameObject firePoint;
     public GameObject[] projectilePrefabs;
     [SerializeField] private int currentProjectileIndex;
+    [Tooltip("准星射线命中且在此距离内才朝命中点飞；更近/更远/未命中则沿相机准星方向")]
+    [SerializeField] private float minAimHitDistance = 2.5f;
+    [SerializeField] private float maxAimHitDistance = 80f;
 
     #endregion
 
@@ -330,21 +331,16 @@ public class CharactorController : MonoBehaviour
     }
 
     /// <summary>
-    /// 与屏幕中心一致；近处墙体不参与计算，避免室内镜头偏移后的视差偏弹。
+    /// 近处墙体忽略；未命中或超出 maxAimHitDistance 时沿相机准星方向（含俯仰）。
     /// </summary>
     private Vector3 GetFireDirection(Ray ray)
     {
-        if (TryGetAimHit(ray, 1000f, out RaycastHit hit))
+        if (TryGetAimHit(ray, maxAimHitDistance, out RaycastHit hit))
         {
             Vector3 toTarget = hit.point - firePoint.transform.position;
             if (toTarget.sqrMagnitude >= AimDirectionMinSqr)
                 return toTarget.normalized;
         }
-
-        Vector3 aim = ray.direction;
-        aim.y = 0f;
-        if (aim.sqrMagnitude >= AimDirectionMinSqr)
-            return aim.normalized;
 
         return ray.direction.normalized;
     }

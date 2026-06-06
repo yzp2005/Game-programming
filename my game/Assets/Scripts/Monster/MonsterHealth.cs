@@ -2,11 +2,10 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 怪物生命值：扣血、死亡、受伤后延迟缓慢回血。
-/// 挂到怪物根物体（与 MonsterChaseAI、Animator 同级）。
+/// 怪物生命值：扣血、死亡动画、可选回血。挂怪物根物体。
 /// </summary>
 [DisallowMultipleComponent]
-public class Health : MonoBehaviour
+public class MonsterHealth : MonoBehaviour
 {
     [Header("生命值")]
     [SerializeField] float maxHealth = 100f;
@@ -14,9 +13,7 @@ public class Health : MonoBehaviour
 
     [Header("回血")]
     [SerializeField] bool enableRegen = true;
-    [Tooltip("每秒恢复血量")]
     [SerializeField] float regenPerSecond = 4f;
-    [Tooltip("受伤后等待多久才开始回血")]
     [SerializeField] float regenDelayAfterDamage = 3f;
 
     [Header("死亡")]
@@ -95,8 +92,7 @@ public class Health : MonoBehaviour
         IsDead = true;
         currentHealth = 0f;
 
-        MonsterChaseAI chaseAI = GetComponent<MonsterChaseAI>();
-        if (chaseAI != null)
+        if (TryGetComponent(out MonsterChaseAI chaseAI))
             chaseAI.enabled = false;
 
         if (animator != null)

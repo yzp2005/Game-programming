@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 用 UI Image 宽度表示血量，受伤时宽度平滑减少（非瞬间跳变）。
 /// </summary>
-[RequireComponent(typeof(Health))]
+[RequireComponent(typeof(MonsterHealth))]
 public class MonsterHealthBarUI : MonoBehaviour
 {
     [SerializeField] RectTransform fillBar;
@@ -14,14 +14,14 @@ public class MonsterHealthBarUI : MonoBehaviour
     [Tooltip("数值越大，血条跟得越快")]
     [SerializeField] float smoothSpeed = 12f;
 
-    Health health;
+    MonsterHealth health;
     float maxBarWidth;
     float targetPercent = 1f;
     float displayPercent = 1f;
 
     void Awake()
     {
-        health = GetComponent<Health>();
+        health = GetComponent<MonsterHealth>();
 
         if (fillBar == null)
         {
