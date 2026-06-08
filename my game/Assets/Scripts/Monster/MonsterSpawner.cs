@@ -21,6 +21,9 @@ public class MonsterSpawner : MonoBehaviour
         if (monster.TryGetComponent(out MonsterChaseAI ai))
             ai.Configure(path);
 
+        if (!monster.TryGetComponent(out MinimapTrackable _))
+            monster.AddComponent<MinimapTrackable>();
+
         return monster;
     }
 

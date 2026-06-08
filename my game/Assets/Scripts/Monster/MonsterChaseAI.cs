@@ -68,6 +68,7 @@ public class MonsterChaseAI : MonoBehaviour
                 if (destination != null)
                     FaceFlat(destination.position);
                 SetAnim(attackAnimValue);
+                TryDealAttackDamage();
                 return;
             }
         }
@@ -183,9 +184,14 @@ public class MonsterChaseAI : MonoBehaviour
     }
 
     /// <summary>
-    /// 挂在 Animator 同一物体的攻击动画上：Add Event → 调用此函数（出手帧）。
+    /// 攻击动画 Add Event 可调用此函数（出手帧）；未加事件时也会在攻击状态下按冷却自动扣血。
     /// </summary>
     public void OnAttackHit()
+    {
+        TryDealAttackDamage();
+    }
+
+    void TryDealAttackDamage()
     {
         if (!attacking || attackTarget == null || attackTarget.IsDestroyed)
             return;

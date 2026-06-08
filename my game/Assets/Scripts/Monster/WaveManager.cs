@@ -23,16 +23,45 @@ public class WaveManager : MonoBehaviour
     [SerializeField] bool loopWaves;
     [Min(0f)] [SerializeField] float delayBetweenWaves = 3f;
 
+    Coroutine waveRoutine;
+
+    public bool IsRunning => waveRoutine != null;
+
     void Start()
     {
         if (autoStartOnPlay)
-            StartCoroutine(RunWaves());
+            BeginWaves();
+    }
+
+    void OnDisable()
+    {
+        StopWaves();
+    }
+
+    /// <summary>开始跑波次。由 LevelController 或外部脚本调用。</summary>
+    public void BeginWaves()
+    {
+        StopWaves();
+        waveRoutine = StartCoroutine(RunWaves());
+    }
+
+    /// <summary>停止当前波次协程。</summary>
+    public void StopWaves()
+    {
+        if (waveRoutine == null)
+            return;
+
+        StopCoroutine(waveRoutine);
+        waveRoutine = null;
     }
 
     IEnumerator RunWaves()
     {
         if (waves == null || waves.Length == 0)
+        {
+            waveRoutine = null;
             yield break;
+        }
 
         do
         {
@@ -63,5 +92,7 @@ public class WaveManager : MonoBehaviour
                     yield return new WaitForSeconds(delayBetweenWaves);
             }
         } while (loopWaves);
+
+        waveRoutine = null;
     }
 }
