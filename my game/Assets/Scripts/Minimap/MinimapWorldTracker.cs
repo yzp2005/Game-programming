@@ -130,7 +130,19 @@ public class MinimapWorldTracker : MonoBehaviour
 
     void UnregisterInternal(MinimapTrackable trackable)
     {
-        trackables.Remove(trackable);
+        if (!trackables.Remove(trackable))
+            return;
+
+        RemoveEntitySnapshot(trackable);
+    }
+
+    void RemoveEntitySnapshot(MinimapTrackable trackable)
+    {
+        for (int i = entitySnapshots.Count - 1; i >= 0; i--)
+        {
+            if (entitySnapshots[i].Source == trackable)
+                entitySnapshots.RemoveAt(i);
+        }
     }
 
     public void RefreshNow()
@@ -168,7 +180,8 @@ public class MinimapWorldTracker : MonoBehaviour
                 continue;
             }
 
-            if (trackable.TryGetComponent(out MonsterHealth health) && health.IsDead)
+            MonsterHealth health = trackable.GetComponentInParent<MonsterHealth>();
+            if (health != null && health.IsDead)
             {
                 trackables.RemoveAt(i);
                 continue;

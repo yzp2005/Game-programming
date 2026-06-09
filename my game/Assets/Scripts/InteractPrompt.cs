@@ -19,6 +19,12 @@ public class InteractPrompt : MonoBehaviour
     [SerializeField] private DialogueReader dialogueReader;
     [SerializeField] private TextAsset dialogue;
 
+    [Header("对话结束后 Flag（可选）")]
+    [Tooltip("对话正常播完后 GameEventManager.Set")]
+    [SerializeField] private string[] flagsToAddOnDialogueFinish;
+    [Tooltip("对话正常播完后 GameEventManager.Remove")]
+    [SerializeField] private string[] flagsToRemoveOnDialogueFinish;
+
     [Header("对话结束后任务 UI（留空不更新）")]
     [SerializeField] private QuestDisplay questDisplay;
     [SerializeField] private string questNameAfter;
@@ -34,6 +40,7 @@ public class InteractPrompt : MonoBehaviour
         if (questDisplay == null)
             questDisplay = FindObjectOfType<QuestDisplay>();
         SetPrompt(false);
+        MinimapTrackable.EnsureOn(gameObject, MinimapTrackable.BlipKind.Friendly);
     }
 
     void OnDestroy()
@@ -61,7 +68,7 @@ public class InteractPrompt : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F) && dialogue != null && dialogueReader != null)
         {
             dialogueReader.StartReading(dialogue);
-            if (HasQuestAfterDialogue() && dialogueReader.IsPlaying)
+            if (NeedsDialogueFinishedHandler() && dialogueReader.IsPlaying)
                 dialogueReader.ReadingFinished += OnDialogueFinished;
         }
     }
@@ -92,13 +99,59 @@ public class InteractPrompt : MonoBehaviour
             && (!string.IsNullOrWhiteSpace(questNameAfter) || !string.IsNullOrWhiteSpace(questContentAfter));
     }
 
+    bool NeedsDialogueFinishedHandler()
+    {
+        return HasQuestAfterDialogue() || HasFlagChangesOnDialogueFinish();
+    }
+
+    bool HasFlagChangesOnDialogueFinish()
+    {
+        return HasNonEmptyEntry(flagsToAddOnDialogueFinish)
+            || HasNonEmptyEntry(flagsToRemoveOnDialogueFinish);
+    }
+
+    static bool HasNonEmptyEntry(string[] entries)
+    {
+        if (entries == null)
+            return false;
+
+        foreach (string entry in entries)
+        {
+            if (!string.IsNullOrWhiteSpace(entry))
+                return true;
+        }
+
+        return false;
+    }
+
     void OnDialogueFinished()
     {
         dialogueReader.ReadingFinished -= OnDialogueFinished;
-        if (!HasQuestAfterDialogue())
-            return;
+        ApplyDialogueFinishFlags();
 
-        questDisplay.SetCurrentQuest(questNameAfter, questContentAfter);
+        if (HasQuestAfterDialogue())
+            questDisplay.SetCurrentQuest(questNameAfter, questContentAfter);
+    }
+
+    void ApplyDialogueFinishFlags()
+    {
+        if (flagsToAddOnDialogueFinish != null)
+        {
+            foreach (string flag in flagsToAddOnDialogueFinish)
+            {
+                if (!string.IsNullOrWhiteSpace(flag))
+                    GameEventManager.Set(flag.Trim());
+            }
+        }
+
+        if (flagsToRemoveOnDialogueFinish != null)
+        {
+            foreach (string flag in flagsToRemoveOnDialogueFinish)
+            {
+                if (!string.IsNullOrWhiteSpace(flag))
+                    GameEventManager.Remove(flag.Trim());
+            }
+        }
     }
 
     void SetPrompt(bool show)

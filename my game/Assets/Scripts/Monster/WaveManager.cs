@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -26,6 +27,9 @@ public class WaveManager : MonoBehaviour
     Coroutine waveRoutine;
 
     public bool IsRunning => waveRoutine != null;
+
+    /// <summary>非 Loop 模式下全部波次刷完后触发（被 StopWaves 打断时不触发）。</summary>
+    public event Action WavesFinished;
 
     void Start()
     {
@@ -87,5 +91,6 @@ public class WaveManager : MonoBehaviour
         } while (loopWaves);
 
         waveRoutine = null;
+        WavesFinished?.Invoke();
     }
 }

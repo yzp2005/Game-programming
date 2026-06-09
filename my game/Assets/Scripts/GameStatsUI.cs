@@ -2,35 +2,50 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// 在 TMP 上显示关卡计时与击杀数。挂到 Canvas 上，拖入两个 Text 即可。
+/// 关卡全局统计：时间、击杀、已放置人数、剩余巧克力。
 /// </summary>
 [DisallowMultipleComponent]
 public class GameStatsUI : MonoBehaviour
 {
+    public static GameStatsUI Instance { get; private set; }
+
     [Header("UI")]
     [SerializeField] TMP_Text timerText;
     [SerializeField] TMP_Text killCountText;
+    [SerializeField] TMP_Text populationText;
+    [SerializeField] TMP_Text chocolateText;
 
-    [Header("计时")]
+    [Header("初始值")]
+    [SerializeField] int startingChocolate = 10;
     [SerializeField] bool autoStartOnPlay = true;
     [SerializeField] bool countOnlyMonsterKills = true;
 
     float elapsedTime;
     int killCount;
+    int placedPopulation;
+    int chocolateRemaining;
     bool isRunning;
 
-    public float ElapsedTime => elapsedTime;
-    public int KillCount => killCount;
-
-    void OnEnable()
+    void Awake()
     {
-        MonsterHealth.OnAnyDeath += HandleDeath;
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning($"{name}: 场景里存在多个 GameStatsUI，将使用 {Instance.name}。", this);
+            return;
+        }
+
+        Instance = this;
     }
 
-    void OnDisable()
+    void OnDestroy()
     {
-        MonsterHealth.OnAnyDeath -= HandleDeath;
+        if (Instance == this)
+            Instance = null;
     }
+
+    void OnEnable() => MonsterHealth.OnAnyDeath += HandleDeath;
+
+    void OnDisable() => MonsterHealth.OnAnyDeath -= HandleDeath;
 
     void Start()
     {
@@ -53,18 +68,24 @@ public class GameStatsUI : MonoBehaviour
     {
         elapsedTime = 0f;
         killCount = 0;
+        placedPopulation = 0;
+        chocolateRemaining = startingChocolate;
         isRunning = true;
         RefreshUI();
     }
 
-    public void StartTimer()
-    {
-        isRunning = true;
-    }
+    public bool CanAfford(int cost) => chocolateRemaining >= cost;
 
-    public void StopTimer()
+    public bool TryPlaceNpc(int chocolateCost)
     {
-        isRunning = false;
+        chocolateCost = Mathf.Max(0, chocolateCost);
+        if (!CanAfford(chocolateCost))
+            return false;
+
+        chocolateRemaining -= chocolateCost;
+        placedPopulation++;
+        RefreshUI();
+        return true;
     }
 
     void HandleDeath(MonsterHealth health)
@@ -83,6 +104,8 @@ public class GameStatsUI : MonoBehaviour
     {
         RefreshTimerText();
         RefreshKillText();
+        RefreshPopulationText();
+        RefreshChocolateText();
     }
 
     void RefreshTimerText()
@@ -97,9 +120,19 @@ public class GameStatsUI : MonoBehaviour
 
     void RefreshKillText()
     {
-        if (killCountText == null)
-            return;
+        if (killCountText != null)
+            killCountText.text = killCount.ToString();
+    }
 
-        killCountText.text = killCount.ToString();
+    void RefreshPopulationText()
+    {
+        if (populationText != null)
+            populationText.text = placedPopulation.ToString();
+    }
+
+    void RefreshChocolateText()
+    {
+        if (chocolateText != null)
+            chocolateText.text = chocolateRemaining.ToString();
     }
 }

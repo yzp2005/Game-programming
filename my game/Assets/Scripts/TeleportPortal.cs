@@ -8,6 +8,12 @@ public class TeleportPortal : MonoBehaviour
     [SerializeField] private TMP_Text promptText;
     [SerializeField] private string promptMessage = "Teleport [F]";
 
+    [Header("条件（可选）")]
+    [Tooltip("需全部存在才能传送；留空则不限制")]
+    [SerializeField] private string[] requiredFlags;
+    [Tooltip("条件未满足时显示的提示；留空则不显示")]
+    [SerializeField] private string lockedPromptMessage;
+
     [Header("切换场景")]
     [Tooltip("File → Build Settings 里 Scenes In Build 左侧的序号，从 0 开始")]
     [SerializeField] private int targetSceneBuildIndex = 1;
@@ -48,6 +54,15 @@ public class TeleportPortal : MonoBehaviour
             return;
         }
 
+        if (!CanTeleport())
+        {
+            if (string.IsNullOrWhiteSpace(lockedPromptMessage))
+                HidePrompt();
+            else
+                EventHintUI.Show(this, promptRoot, promptText, lockedPromptMessage);
+            return;
+        }
+
         ShowPrompt();
 
         if (!Input.GetKeyDown(KeyCode.F) || _player == null)
@@ -76,5 +91,22 @@ public class TeleportPortal : MonoBehaviour
         _inside = false;
         _player = null;
         HidePrompt();
+    }
+
+    bool CanTeleport()
+    {
+        if (requiredFlags == null || requiredFlags.Length == 0)
+            return true;
+
+        foreach (string flag in requiredFlags)
+        {
+            if (string.IsNullOrWhiteSpace(flag))
+                continue;
+
+            if (!GameEventManager.Has(flag.Trim()))
+                return false;
+        }
+
+        return true;
     }
 }

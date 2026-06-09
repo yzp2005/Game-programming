@@ -121,6 +121,12 @@ public class MonsterHealth : MonoBehaviour
 
         if (TryGetComponent(out MinimapTrackable minimapTrackable))
             minimapTrackable.enabled = false;
+        else
+        {
+            MinimapTrackable childTrackable = GetComponentInChildren<MinimapTrackable>();
+            if (childTrackable != null)
+                childTrackable.enabled = false;
+        }
 
         OnDeath?.Invoke();
         OnAnyDeath?.Invoke(this);

@@ -1,112 +1,87 @@
-using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// 多按键对应不同 NPC 的摆放模式。按配置键进入/切换/退出，左键放置。
-/// 挂到主角上。
+/// 按 E 进入/退出摆放模式。幽灵用 Display Prefab，左键放置 Placement Prefab。
 /// </summary>
+[DefaultExecutionOrder(-100)]
 [DisallowMultipleComponent]
 public class NpcPlacementController : MonoBehaviour
 {
-    [Serializable]
-    public class NpcPlacementEntry
-    {
-        [Tooltip("按此键进入该 NPC 摆放；摆放中再按一次退出，按其他键则切换")]
-        public KeyCode placementKey = KeyCode.E;
-        public GameObject npcPrefab;
-        [Tooltip("从该预制体拖入需要换预览材质的 Renderer")]
-        public Renderer[] previewRenderers;
-    }
-
     [Header("输入")]
+    [SerializeField] KeyCode toggleKey = KeyCode.E;
     [SerializeField] int placeMouseButton = 0;
-    [SerializeField] NpcPlacementEntry[] placementEntries;
+    [SerializeField] CharacterPreviewStage previewStage;
 
     [Header("检测")]
     [SerializeField] Camera playerCamera;
     [SerializeField] float maxRayDistance = 80f;
     [SerializeField] LayerMask obstacleLayers = ~0;
     [SerializeField] LayerMask groundLayers = ~0;
-    [Tooltip("人物水平占地半径，用于 SphereCast / CapsuleCast")]
     [SerializeField] float placementRadius = 0.45f;
-    [Tooltip("胶囊体高度（脚底到顶）")]
     [SerializeField] float placementHeight = 1.8f;
     [SerializeField] float obstacleSkin = 0.05f;
     [SerializeField] float groundProbeUp = 3f;
     [SerializeField] float groundProbeDown = 6f;
-    [Tooltip("预览与主角的最小水平距离，避免鼠标靠近时贴在身上")]
     [SerializeField] float minDistanceFromPlayer = 2.5f;
-    [Tooltip("鼠标离屏幕中心低于此像素时，沿鼠标方向推到最小距离处")]
     [SerializeField] float minScreenPointerDistance = 80f;
 
     [Header("预览材质")]
     [SerializeField] Material validPreviewMaterial;
     [SerializeField] Material invalidPreviewMaterial;
+    [Tooltip("摆放幽灵使用的 Layer，需被主相机 Culling Mask 包含")]
+    [SerializeField] string previewLayerName = "Default";
 
     GameObject previewInstance;
+    GameObject displayPrefab;
+    GameObject placementPrefab;
     float referenceGroundY;
     bool lastPreviewValid = true;
-    int activeEntryIndex = -1;
 
-    readonly System.Collections.Generic.List<Behaviour> previewDisabledBehaviours = new();
-    readonly System.Collections.Generic.List<Collider> previewDisabledColliders = new();
-    readonly System.Collections.Generic.List<Animator> previewDisabledAnimators = new();
-    readonly System.Collections.Generic.List<(Rigidbody rb, bool kinematic, bool useGravity)> previewRigidbodies = new();
-    readonly System.Collections.Generic.List<(Renderer renderer, Material[] originalSharedMaterials)> previewMaterialBackups = new();
+    readonly List<(Renderer renderer, Material[] originalSharedMaterials)> previewMaterialBackups = new();
+
+    NpcCharacterRegistry registry;
 
     public static bool IsActive { get; private set; }
-
-    NpcPlacementEntry ActiveEntry =>
-        activeEntryIndex >= 0 && placementEntries != null && activeEntryIndex < placementEntries.Length
-            ? placementEntries[activeEntryIndex]
-            : null;
+    public static bool HasAvailablePrefab { get; private set; }
 
     void Awake()
     {
         if (playerCamera == null)
             playerCamera = Camera.main;
+
+        EnsureRefs();
     }
 
     void Update()
     {
+        EnsureRefs();
+
+        HasAvailablePrefab = registry != null
+            && previewStage != null
+            && registry.CanPlace(previewStage.CurrentDisplayIndex)
+            && CanAffordCurrentSlot();
+
         if (PlayerInputLock.IsLocked)
             return;
 
-        if (TryHandleEntryInput())
+        if (Input.GetKeyDown(toggleKey))
+        {
+            if (IsActive)
+                ExitPlacementMode();
+            else
+                EnterPlacementMode();
             return;
+        }
 
         if (!IsActive)
             return;
 
         UpdatePreviewTransform();
 
-        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI() && CanPlaceAtCurrentPosition())
+        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI() && CanAffordCurrentSlot())
             PlacePreview();
-    }
-
-    bool TryHandleEntryInput()
-    {
-        if (placementEntries == null || placementEntries.Length == 0)
-            return false;
-
-        for (int i = 0; i < placementEntries.Length; i++)
-        {
-            NpcPlacementEntry entry = placementEntries[i];
-            if (entry == null || !Input.GetKeyDown(entry.placementKey))
-                continue;
-
-            if (IsActive && activeEntryIndex == i)
-                ExitPlacementMode();
-            else if (IsActive)
-                SwitchEntry(i);
-            else
-                EnterPlacementMode(i);
-
-            return true;
-        }
-
-        return false;
     }
 
     void OnDisable()
@@ -115,56 +90,58 @@ public class NpcPlacementController : MonoBehaviour
             ExitPlacementMode();
     }
 
-    public void EnterPlacementMode(int entryIndex)
+    void EnsureRefs()
     {
-        if (!TryGetEntry(entryIndex, out NpcPlacementEntry entry))
+        if (previewStage == null)
+            previewStage = FindObjectOfType<CharacterPreviewStage>(true);
+
+        if (registry != null)
             return;
 
-        if (entry.npcPrefab == null)
+        if (previewStage != null && previewStage.Registry != null)
+            registry = previewStage.Registry;
+        else
+            registry = FindObjectOfType<NpcCharacterRegistry>(true);
+    }
+
+    public void EnterPlacementMode()
+    {
+        EnsureRefs();
+
+        if (previewStage == null || registry == null)
         {
-            Debug.LogWarning($"{name}: Placement Entries[{entryIndex}] 未指定 NPC Prefab。", this);
+            Debug.LogWarning($"{name}: 缺少 CharacterPreviewStage 或 NpcCharacterRegistry。", this);
             return;
         }
+
+        previewStage.EnsureCurrentCharacterVisible();
+
+        int index = previewStage.CurrentDisplayIndex;
+        displayPrefab = registry.GetDisplayPrefab(index);
+        placementPrefab = registry.GetPlacementPrefab(index);
+
+        if (displayPrefab == null || placementPrefab == null)
+        {
+            Debug.LogWarning($"{name}: Registry Slot {index} 配置不完整。", this);
+            return;
+        }
+
+        if (playerCamera == null)
+            playerCamera = Camera.main;
+
+        if (validPreviewMaterial == null)
+            Debug.LogWarning($"{name}: Valid Preview Material 未设置，幽灵可能没有半透明白色效果。", this);
 
         IsActive = true;
-        activeEntryIndex = entryIndex;
         referenceGroundY = transform.position.y;
-
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
-
         SpawnPreview();
-    }
-
-    void SwitchEntry(int entryIndex)
-    {
-        if (!TryGetEntry(entryIndex, out NpcPlacementEntry entry))
-            return;
-
-        if (entry.npcPrefab == null)
-        {
-            Debug.LogWarning($"{name}: Placement Entries[{entryIndex}] 未指定 NPC Prefab。", this);
-            return;
-        }
-
-        activeEntryIndex = entryIndex;
-        SpawnPreview();
-    }
-
-    bool TryGetEntry(int entryIndex, out NpcPlacementEntry entry)
-    {
-        entry = null;
-        if (placementEntries == null || entryIndex < 0 || entryIndex >= placementEntries.Length)
-            return false;
-
-        entry = placementEntries[entryIndex];
-        return entry != null;
     }
 
     public void ExitPlacementMode()
     {
         IsActive = false;
-        activeEntryIndex = -1;
         DestroyPreview();
 
         if (!PlayerInputLock.IsLocked)
@@ -173,32 +150,55 @@ public class NpcPlacementController : MonoBehaviour
 
     void SpawnPreview()
     {
-        NpcPlacementEntry entry = ActiveEntry;
-        if (entry == null || entry.npcPrefab == null)
+        if (displayPrefab == null)
             return;
 
         DestroyPreview();
 
-        previewInstance = Instantiate(entry.npcPrefab);
-        previewInstance.name = entry.npcPrefab.name + " (Preview)";
+        previewInstance = Instantiate(displayPrefab);
+        previewInstance.name = displayPrefab.name + " (Preview)";
+        ApplyPreviewLayer(previewInstance);
         ApplyPreviewState(previewInstance);
-        CachePreviewMaterials(entry);
+        CachePreviewMaterials();
         lastPreviewValid = true;
         ApplyPreviewMaterials(true);
         UpdatePreviewTransform();
     }
 
+    void ApplyPreviewLayer(GameObject root)
+    {
+        int layer = LayerMask.NameToLayer(previewLayerName);
+        if (layer < 0)
+            layer = 0;
+
+        SetLayerRecursively(root, layer);
+    }
+
+    static void SetLayerRecursively(GameObject root, int layer)
+    {
+        root.layer = layer;
+        Transform t = root.transform;
+        for (int i = 0; i < t.childCount; i++)
+            SetLayerRecursively(t.GetChild(i).gameObject, layer);
+    }
+
     void PlacePreview()
     {
-        NpcPlacementEntry entry = ActiveEntry;
-        if (previewInstance == null || entry == null || entry.npcPrefab == null)
+        if (previewInstance == null || placementPrefab == null || previewStage == null || registry == null)
             return;
 
-        RestorePreviewMaterials();
-        ActivatePreview(previewInstance);
-        previewInstance.name = entry.npcPrefab.name;
-        previewInstance = null;
-        ClearPreviewTracking();
+        int cost = registry.GetChocolateCost(previewStage.CurrentDisplayIndex);
+        if (GameStatsUI.Instance != null && !GameStatsUI.Instance.TryPlaceNpc(cost))
+            return;
+
+        Vector3 position = previewInstance.transform.position;
+        Quaternion rotation = previewInstance.transform.rotation;
+
+        DestroyPreview();
+
+        GameObject placed = Instantiate(placementPrefab, position, rotation);
+        placed.name = placementPrefab.name;
+        MinimapTrackable.EnsureOn(placed, MinimapTrackable.BlipKind.Friendly);
 
         SpawnPreview();
     }
@@ -210,40 +210,59 @@ public class NpcPlacementController : MonoBehaviour
 
         Destroy(previewInstance);
         previewInstance = null;
-        ClearPreviewTracking();
+        previewMaterialBackups.Clear();
     }
 
-    void CachePreviewMaterials(NpcPlacementEntry entry)
+    bool CanAffordCurrentSlot()
+    {
+        if (registry == null || previewStage == null || GameStatsUI.Instance == null)
+            return true;
+
+        return GameStatsUI.Instance.CanAfford(registry.GetChocolateCost(previewStage.CurrentDisplayIndex));
+    }
+
+    void CachePreviewMaterials()
     {
         previewMaterialBackups.Clear();
 
-        if (entry.previewRenderers == null || entry.previewRenderers.Length == 0)
-        {
-            Debug.LogWarning($"{name}: {entry.npcPrefab.name} 的 Preview Renderers 未配置。", this);
-            return;
-        }
+        Renderer[] configuredRenderers = registry != null && previewStage != null
+            ? registry.GetPreviewRenderers(previewStage.CurrentDisplayIndex)
+            : null;
 
-        foreach (Renderer prefabRenderer in entry.previewRenderers)
+        if (configuredRenderers != null && configuredRenderers.Length > 0)
         {
-            Renderer instanceRenderer = ResolveInstanceRenderer(previewInstance, prefabRenderer);
-            if (instanceRenderer == null)
+            foreach (Renderer prefabRenderer in configuredRenderers)
             {
-                Debug.LogWarning($"{name}: 无法在预览实例上找到 {prefabRenderer.name} 对应的 Renderer。", this);
-                continue;
+                if (prefabRenderer == null)
+                    continue;
+
+                Renderer instanceRenderer = ResolveInstanceRenderer(previewInstance, prefabRenderer)
+                    ?? FindRendererByName(previewInstance, prefabRenderer.name);
+                if (instanceRenderer == null)
+                    continue;
+
+                previewMaterialBackups.Add((instanceRenderer, (Material[])instanceRenderer.sharedMaterials.Clone()));
             }
 
-            previewMaterialBackups.Add((instanceRenderer, (Material[])instanceRenderer.sharedMaterials.Clone()));
+            if (previewMaterialBackups.Count > 0)
+                return;
+        }
+
+        foreach (Renderer renderer in previewInstance.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer != null)
+                previewMaterialBackups.Add((renderer, (Material[])renderer.sharedMaterials.Clone()));
         }
     }
 
     static Renderer ResolveInstanceRenderer(GameObject instance, Renderer prefabRenderer)
     {
-        if (instance == null || prefabRenderer == null || instance.transform == null)
+        if (instance == null || prefabRenderer == null)
             return null;
 
         GameObject prefabRoot = prefabRenderer.transform.root.gameObject;
         Transform current = instance.transform;
-        var path = new System.Collections.Generic.List<string>();
+        var path = new List<string>();
         Transform node = prefabRenderer.transform;
 
         while (node != null && node.gameObject != prefabRoot)
@@ -263,6 +282,20 @@ public class NpcPlacementController : MonoBehaviour
         return current.GetComponent<Renderer>();
     }
 
+    static Renderer FindRendererByName(GameObject instance, string rendererName)
+    {
+        if (instance == null || string.IsNullOrEmpty(rendererName))
+            return null;
+
+        foreach (Renderer renderer in instance.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer != null && renderer.name == rendererName)
+                return renderer;
+        }
+
+        return null;
+    }
+
     void ApplyPreviewMaterials(bool valid)
     {
         Material previewMaterial = valid ? validPreviewMaterial : invalidPreviewMaterial;
@@ -274,24 +307,12 @@ public class NpcPlacementController : MonoBehaviour
             if (renderer == null)
                 continue;
 
+            renderer.enabled = true;
             Material[] slots = renderer.materials;
             for (int i = 0; i < slots.Length; i++)
                 slots[i] = previewMaterial;
             renderer.materials = slots;
         }
-    }
-
-    void RestorePreviewMaterials()
-    {
-        foreach ((Renderer renderer, Material[] originalSharedMaterials) in previewMaterialBackups)
-        {
-            if (renderer == null)
-                continue;
-
-            renderer.sharedMaterials = originalSharedMaterials;
-        }
-
-        previewMaterialBackups.Clear();
     }
 
     void UpdatePreviewTransform()
@@ -301,8 +322,10 @@ public class NpcPlacementController : MonoBehaviour
 
         if (TryGetPlacementPose(out Vector3 position, out Quaternion rotation))
             previewInstance.transform.SetPositionAndRotation(position, rotation);
+        else
+            previewInstance.transform.position = GetFallbackPreviewPosition();
 
-        bool canPlace = CanPlaceAtCurrentPosition();
+        bool canPlace = CanAffordCurrentSlot();
         if (canPlace != lastPreviewValid)
         {
             lastPreviewValid = canPlace;
@@ -310,14 +333,16 @@ public class NpcPlacementController : MonoBehaviour
         }
     }
 
-    /// <summary>当前位置是否可放置。区域、重叠等规则在此扩展。</summary>
-    bool CanPlaceAtCurrentPosition()
+    Vector3 GetFallbackPreviewPosition()
     {
-        if (previewInstance == null)
-            return false;
+        Vector3 forward = transform.forward;
+        forward.y = 0f;
+        if (forward.sqrMagnitude < 0.0001f)
+            forward = Vector3.forward;
 
-        // TODO: 区域检测、与其他物体重叠等
-        return true;
+        Vector3 point = transform.position + forward.normalized * minDistanceFromPlayer;
+        point.y = referenceGroundY;
+        return SnapToGround(point);
     }
 
     bool TryGetPlacementPose(out Vector3 position, out Quaternion rotation)
@@ -354,12 +379,7 @@ public class NpcPlacementController : MonoBehaviour
     bool TryGetRayGroundPoint(Ray ray, out Vector3 point)
     {
         RaycastHit[] sphereHits = Physics.SphereCastAll(
-            ray.origin,
-            placementRadius,
-            ray.direction,
-            maxRayDistance,
-            obstacleLayers,
-            QueryTriggerInteraction.Ignore);
+            ray.origin, placementRadius, ray.direction, maxRayDistance, obstacleLayers, QueryTriggerInteraction.Ignore);
 
         if (TryGetClosestHit(sphereHits, out RaycastHit hit))
         {
@@ -471,10 +491,7 @@ public class NpcPlacementController : MonoBehaviour
 
         foreach (RaycastHit hit in hits)
         {
-            if (ShouldIgnoreCollider(hit.collider))
-                continue;
-
-            if (hit.distance >= closestDistance)
+            if (ShouldIgnoreCollider(hit.collider) || hit.distance >= closestDistance)
                 continue;
 
             closestDistance = hit.distance;
@@ -520,82 +537,39 @@ public class NpcPlacementController : MonoBehaviour
         return true;
     }
 
-    void ClearPreviewTracking()
+    static void ApplyPreviewState(GameObject root)
     {
-        previewDisabledBehaviours.Clear();
-        previewDisabledColliders.Clear();
-        previewDisabledAnimators.Clear();
-        previewRigidbodies.Clear();
-    }
-
-    void ApplyPreviewState(GameObject root)
-    {
-        ClearPreviewTracking();
+        foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            if (renderer != null)
+                renderer.enabled = true;
+        }
 
         foreach (Animator animator in root.GetComponentsInChildren<Animator>(true))
         {
-            if (!animator.enabled)
+            if (animator == null)
                 continue;
 
-            previewDisabledAnimators.Add(animator);
-            animator.enabled = false;
+            animator.enabled = true;
+            animator.speed = 0f;
+            animator.Update(0f);
         }
 
         foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
-        {
-            if (!collider.enabled)
-                continue;
-
-            previewDisabledColliders.Add(collider);
             collider.enabled = false;
-        }
 
         foreach (MonoBehaviour behaviour in root.GetComponentsInChildren<MonoBehaviour>(true))
         {
-            if (behaviour == null || !behaviour.enabled)
-                continue;
-
-            previewDisabledBehaviours.Add(behaviour);
-            behaviour.enabled = false;
+            if (behaviour != null && behaviour.enabled)
+                behaviour.enabled = false;
         }
 
         foreach (Rigidbody rb in root.GetComponentsInChildren<Rigidbody>(true))
         {
-            previewRigidbodies.Add((rb, rb.isKinematic, rb.useGravity));
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.useGravity = false;
             rb.isKinematic = true;
-        }
-    }
-
-    void ActivatePreview(GameObject root)
-    {
-        foreach (Animator animator in previewDisabledAnimators)
-        {
-            if (animator != null)
-                animator.enabled = true;
-        }
-
-        foreach (Collider collider in previewDisabledColliders)
-        {
-            if (collider != null)
-                collider.enabled = true;
-        }
-
-        foreach (Behaviour behaviour in previewDisabledBehaviours)
-        {
-            if (behaviour != null)
-                behaviour.enabled = true;
-        }
-
-        foreach ((Rigidbody rb, bool kinematic, bool useGravity) entry in previewRigidbodies)
-        {
-            if (entry.rb == null)
-                continue;
-
-            entry.rb.isKinematic = entry.kinematic;
-            entry.rb.useGravity = entry.useGravity;
         }
     }
 

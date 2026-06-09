@@ -66,6 +66,7 @@ public class NPCShootController : MonoBehaviour
 
         EnsureTriggerSetup();
         EnsureAimLine();
+        MinimapTrackable.EnsureOn(gameObject, MinimapTrackable.BlipKind.Friendly);
     }
 
     void Start()

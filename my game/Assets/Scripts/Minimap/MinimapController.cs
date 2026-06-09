@@ -41,6 +41,7 @@ public class MinimapController : MonoBehaviour
     [SerializeField] RectTransform blipContainer;
     [SerializeField] RectTransform playerBlip;
     [SerializeField] GameObject enemyBlipPrefab;
+    [SerializeField] GameObject friendlyBlipPrefab;
 
     [Header("图标颜色（未指定 Prefab 颜色时使用）")]
     [SerializeField] Color enemyColor = new Color(1f, 0.25f, 0.25f, 1f);
@@ -105,13 +106,13 @@ public class MinimapController : MonoBehaviour
             shouldShow = IsTouchHoldingCorner();
 
         SetVisible(shouldShow);
-        if (!isVisible)
-            return;
 
         if (!boundsReady)
             RebuildBounds();
 
-        UpdatePlayerBlip();
+        if (isVisible)
+            UpdatePlayerBlip();
+
         SyncTrackableBlips();
     }
 
@@ -260,20 +261,33 @@ public class MinimapController : MonoBehaviour
             MinimapTrackable trackable = snapshot.Source;
             if (!blipByTrackable.TryGetValue(trackable, out RectTransform blip))
             {
+                if (!isVisible)
+                    continue;
+
                 blip = CreateBlip(snapshot.Kind);
                 blipByTrackable[trackable] = blip;
             }
 
-            blip.anchoredPosition = WorldToBlipLocal(snapshot.WorldPosition);
+            if (isVisible)
+                blip.anchoredPosition = WorldToBlipLocal(snapshot.WorldPosition);
         }
 
         var toRemove = new List<MinimapTrackable>();
         foreach (KeyValuePair<MinimapTrackable, RectTransform> pair in blipByTrackable)
         {
+            MinimapTrackable trackable = pair.Key;
+            if (trackable == null)
+            {
+                if (pair.Value != null)
+                    Destroy(pair.Value.gameObject);
+                toRemove.Add(trackable);
+                continue;
+            }
+
             bool stillTracked = false;
             for (int i = 0; i < entities.Count; i++)
             {
-                if (entities[i].Source == pair.Key)
+                if (entities[i].Source == trackable)
                 {
                     stillTracked = true;
                     break;
@@ -281,7 +295,7 @@ public class MinimapController : MonoBehaviour
             }
 
             if (!stillTracked)
-                toRemove.Add(pair.Key);
+                toRemove.Add(trackable);
         }
 
         foreach (MinimapTrackable trackable in toRemove)
@@ -298,20 +312,22 @@ public class MinimapController : MonoBehaviour
 
     void RemoveBlip(MinimapTrackable trackable)
     {
-        if (trackable != null && blipByTrackable.TryGetValue(trackable, out RectTransform blip))
-        {
-            if (blip != null)
-                Destroy(blip.gameObject);
-            blipByTrackable.Remove(trackable);
-        }
+        if (!blipByTrackable.TryGetValue(trackable, out RectTransform blip))
+            return;
+
+        if (blip != null)
+            Destroy(blip.gameObject);
+
+        blipByTrackable.Remove(trackable);
     }
 
     RectTransform CreateBlip(MinimapTrackable.BlipKind kind)
     {
+        GameObject prefab = GetBlipPrefab(kind);
         GameObject go;
-        if (enemyBlipPrefab != null)
+        if (prefab != null)
         {
-            go = Instantiate(enemyBlipPrefab, blipContainer);
+            go = Instantiate(prefab, blipContainer);
         }
         else
         {
@@ -354,6 +370,17 @@ public class MinimapController : MonoBehaviour
             case MinimapTrackable.BlipKind.Objective: return objectiveColor;
             case MinimapTrackable.BlipKind.Friendly: return friendlyColor;
             default: return enemyColor;
+        }
+    }
+
+    GameObject GetBlipPrefab(MinimapTrackable.BlipKind kind)
+    {
+        switch (kind)
+        {
+            case MinimapTrackable.BlipKind.Friendly:
+                return friendlyBlipPrefab != null ? friendlyBlipPrefab : enemyBlipPrefab;
+            default:
+                return enemyBlipPrefab;
         }
     }
 

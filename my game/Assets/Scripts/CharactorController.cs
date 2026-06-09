@@ -29,12 +29,24 @@ public class CharactorController : MonoBehaviour
     [Header("攻击设置")]
     [SerializeField] private Animation camAnim;
     private bool isHoldingAttack;
+    private bool rmbReleasedSinceAir = true;
+
+    public bool IsAimInputActive { get; private set; }
+
+    bool CanEnterCombat =>
+        characterController.isGrounded
+        && !NpcPlacementController.IsActive
+        && rmbReleasedSinceAir;
 
     // ==================== 法球设置 ====================
     [Header("法球设置")]
     public GameObject firePoint;
     public GameObject[] projectilePrefabs;
+    [SerializeField] private float aimMaxDistance = 1000f;
+    [SerializeField] private float minAimDistance = 3f;
+    [SerializeField] private LayerMask aimLayers = ~0;
     private int currentProjectileIndex;
+    private Camera aimCamera;
 
     // ==================== 生命周期 ====================
     void Start()
@@ -47,12 +59,17 @@ public class CharactorController : MonoBehaviour
             animator.applyRootMotion = false;
             animator.SetInteger(AnimParam, IdleAnimValue);
         }
+
+        aimCamera = Camera.main;
     }
 
     void Update()
     {
         if (NpcPlacementController.IsActive)
             ResetAttackState();
+
+        UpdateRmbAirRule();
+        IsAimInputActive = CanEnterCombat && Input.GetMouseButton(1);
 
         HandleMovement();
         HandleAttack();
@@ -62,8 +79,8 @@ public class CharactorController : MonoBehaviour
     // ==================== 移动逻辑 ====================
     void HandleMovement()
     {
-        // 瞄准模式：只能转向，不能移动（摆放模式下禁用）
-        if (!NpcPlacementController.IsActive && Input.GetMouseButton(1))
+        // 瞄准模式：只能在地面转向，不能移动（空中按住右键落地后须先松开）
+        if (IsAimInputActive)
         {
             Vector3 camForward = Camera.main.transform.forward;
             camForward.y = 0;
@@ -122,6 +139,16 @@ public class CharactorController : MonoBehaviour
         if (NpcPlacementController.IsActive)
             return;
 
+        if (Input.GetMouseButtonUp(1))
+        {
+            isHoldingAttack = false;
+            if (animator != null)
+                animator.speed = 1f;
+        }
+
+        if (!CanEnterCombat)
+            return;
+
         // 按住右键 + 点击左键：攻击
         if (Input.GetMouseButton(1) && Input.GetMouseButtonDown(0))
         {
@@ -133,13 +160,21 @@ public class CharactorController : MonoBehaviour
         {
             isHoldingAttack = true;
         }
+    }
 
-        // 松开右键：恢复动画速度
-        if (Input.GetMouseButtonUp(1))
+    void UpdateRmbAirRule()
+    {
+        if (!characterController.isGrounded)
         {
-            isHoldingAttack = false;
-            animator.speed = 1f;
+            if (Input.GetMouseButton(1))
+                rmbReleasedSinceAir = false;
+
+            ResetAttackState(true);
+            return;
         }
+
+        if (Input.GetMouseButtonUp(1) || !Input.GetMouseButton(1))
+            rmbReleasedSinceAir = true;
     }
 
     void HandleAnimation()
@@ -152,7 +187,7 @@ public class CharactorController : MonoBehaviour
         {
             bodyAnimValue = JumpAnimValue;
         }
-        else if (isHoldingAttack && !NpcPlacementController.IsActive)
+        else if (isHoldingAttack && CanEnterCombat)
         {
             bodyAnimValue = IdleAnimValue;
         }
@@ -165,13 +200,13 @@ public class CharactorController : MonoBehaviour
         }
 
         animator.SetInteger(AnimParam, bodyAnimValue);
-        bool upperAttack = isHoldingAttack && !NpcPlacementController.IsActive;
+        bool upperAttack = isHoldingAttack && CanEnterCombat;
         animator.SetInteger(UpperAnimParam, upperAttack ? UpperAttackAnimValue : 0);
     }
 
-    void ResetAttackState()
+    void ResetAttackState(bool force = false)
     {
-        if (!isHoldingAttack && (animator == null || animator.speed >= 1f))
+        if (!force && !isHoldingAttack && (animator == null || animator.speed >= 1f))
             return;
 
         isHoldingAttack = false;
@@ -185,7 +220,7 @@ public class CharactorController : MonoBehaviour
     // 动画事件：攻击动作到达蓄力帧时暂停
     public void OnAttackHoldPoint()
     {
-        if (isHoldingAttack && animator != null)
+        if (isHoldingAttack && CanEnterCombat && animator != null)
         {
             animator.speed = 0f;
         }
@@ -200,29 +235,62 @@ public class CharactorController : MonoBehaviour
     void FireProjectile()
     {
         if (firePoint == null || projectilePrefabs == null || projectilePrefabs.Length == 0) return;
-        if (Camera.main == null) return;
+        if (aimCamera == null)
+            aimCamera = Camera.main;
+        if (aimCamera == null) return;
 
-        // 相机震动
+        Vector3 spawnPosition = firePoint.transform.position;
+        Ray aimRay = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        Vector3 targetPoint = GetAimPoint(aimRay, spawnPosition);
+
+        Vector3 direction = targetPoint - spawnPosition;
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = aimRay.direction;
+        Quaternion spawnRotation = Quaternion.LookRotation(direction.normalized);
+
+        GameObject projectile = Instantiate(
+            projectilePrefabs[currentProjectileIndex],
+            spawnPosition,
+            spawnRotation) as GameObject;
+
+        if (projectile.TryGetComponent(out ProjectileMover mover))
+            mover.targetPoint = targetPoint;
+
         if (camAnim != null)
-        {
             camAnim.Play(camAnim.clip.name);
-        }
+    }
 
-        // 从相机中心发射射线，检测与障碍物的交点
-        Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        Vector3 targetPoint;
+    Vector3 GetAimPoint(Ray ray, Vector3 spawnPosition)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(
+            ray, aimMaxDistance, aimLayers, QueryTriggerInteraction.Ignore);
 
-        if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
+        float closestDistance = float.MaxValue;
+        bool foundHit = false;
+        Vector3 hitPoint = default;
+
+        foreach (RaycastHit hit in hits)
         {
-            targetPoint = hit.point;
-        }
-        else
-        {
-            targetPoint = ray.GetPoint(1000f);
+            if (!IsValidAimTarget(hit.collider) || hit.distance >= closestDistance)
+                continue;
+
+            closestDistance = hit.distance;
+            hitPoint = hit.point;
+            foundHit = true;
         }
 
-        // 生成法球，传入目标点
-        GameObject projectile = Instantiate(projectilePrefabs[currentProjectileIndex], firePoint.transform.position, Quaternion.identity) as GameObject;
-        projectile.GetComponent<ProjectileMover>().targetPoint = targetPoint;
+        if (foundHit && (hitPoint - spawnPosition).sqrMagnitude >= minAimDistance * minAimDistance)
+            return hitPoint;
+
+        return spawnPosition + ray.direction * aimMaxDistance;
+    }
+
+    bool IsValidAimTarget(Collider collider)
+    {
+        if (collider == null)
+            return false;
+
+        Transform hitTransform = collider.transform;
+        return hitTransform != transform && !hitTransform.IsChildOf(transform);
     }
 }
