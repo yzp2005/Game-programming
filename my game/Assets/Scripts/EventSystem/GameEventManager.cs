@@ -9,7 +9,8 @@ public class GameEventManager : MonoBehaviour
 
     readonly HashSet<string> _flags = new HashSet<string>();
 
-    public event Action<string> FlagAdded;
+    /// <summary>首次 Set 某 flag 时触发。与 Set / Has 一样通过类名直接订阅。</summary>
+    public static event Action<string> FlagAdded;
 
     void Awake()
     {
@@ -32,6 +33,6 @@ public class GameEventManager : MonoBehaviour
             return;
 
         if (Instance._flags.Add(tag))
-            Instance.FlagAdded?.Invoke(tag);
+            FlagAdded?.Invoke(tag);
     }
 }

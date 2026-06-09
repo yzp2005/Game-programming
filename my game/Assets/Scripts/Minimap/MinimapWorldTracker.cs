@@ -168,6 +168,12 @@ public class MinimapWorldTracker : MonoBehaviour
                 continue;
             }
 
+            if (trackable.TryGetComponent(out MonsterHealth health) && health.IsDead)
+            {
+                trackables.RemoveAt(i);
+                continue;
+            }
+
             entitySnapshots.Add(new EntitySnapshot
             {
                 Source = trackable,

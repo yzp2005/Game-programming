@@ -1,10 +1,10 @@
 using System;
-using RengeGames.HealthBars;
 using UnityEngine;
+using UnityEngine.Serialization;
+using UnityEngine.UI;
 
 /// <summary>
-/// 塔防核心 / 目标点血量：无动画，同步 RadialSegmentedHealthBar。
-/// 挂 Destination 或核心物体上。
+/// 塔防核心 / 目标点血量。挂 Dawncore 等核心物体上，同步 UI Slider（0~1）。
 /// </summary>
 [DisallowMultipleComponent]
 public class CoreHealth : MonoBehaviour
@@ -14,7 +14,8 @@ public class CoreHealth : MonoBehaviour
     [SerializeField] float currentHealth = 500f;
 
     [Header("UI")]
-    [SerializeField] RadialSegmentedHealthBar healthBar;
+    [FormerlySerializedAs("healthBar")]
+    [SerializeField] Slider healthSlider;
     [SerializeField] bool hideHealthBarOnDestroyed = true;
 
     public event Action<float, float> OnHealthChanged;
@@ -30,7 +31,31 @@ public class CoreHealth : MonoBehaviour
     {
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         IsDestroyed = currentHealth <= 0f;
+        SetupHealthSlider();
         SyncHealthBar();
+
+        if (healthSlider == null)
+            Debug.LogWarning($"{name}: Health Slider 未指定，血条不会显示。", this);
+    }
+
+    /// <summary>
+    /// 把 UI Slider 和 CoreHealth 连起来。可在 Inspector 里拖引用后调用，或在代码里传入 Slider。
+    /// </summary>
+    public void BindHealthSlider(Slider slider)
+    {
+        healthSlider = slider;
+        SetupHealthSlider();
+        SyncHealthBar();
+    }
+
+    void SetupHealthSlider()
+    {
+        if (healthSlider == null)
+            return;
+
+        healthSlider.minValue = 0f;
+        healthSlider.maxValue = 1f;
+        healthSlider.interactable = false;
     }
 
     public void TakeDamage(float amount)
@@ -64,8 +89,8 @@ public class CoreHealth : MonoBehaviour
         currentHealth = 0f;
         NotifyHealthChanged();
 
-        if (hideHealthBarOnDestroyed && healthBar != null)
-            healthBar.gameObject.SetActive(false);
+        if (hideHealthBarOnDestroyed && healthSlider != null)
+            healthSlider.gameObject.SetActive(false);
 
         OnDestroyed?.Invoke();
     }
@@ -78,8 +103,8 @@ public class CoreHealth : MonoBehaviour
 
     void SyncHealthBar()
     {
-        if (healthBar != null)
-            healthBar.SetPercent(HealthPercent);
+        if (healthSlider != null)
+            healthSlider.value = HealthPercent;
     }
 
     void OnValidate()

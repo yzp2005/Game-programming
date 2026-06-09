@@ -14,24 +14,20 @@ public class MonsterChaseAI : MonoBehaviour
     [SerializeField] int runAnimValue = 1;
     [SerializeField] int attackAnimValue = 2;
 
-    [Header("攻击目标")]
-    [Tooltip("拖核心物体（如 Dawncore）；留空则从 Path 的 Destination 自动查找 CoreHealth")]
-    [SerializeField] GameObject attackTargetObject;
-    [SerializeField] float attackDamage = 10f;
-    [Tooltip("两次扣血最小间隔（攻击动画循环时防连打）")]
-    [SerializeField] float attackHitCooldown = 0.8f;
+    [Header("攻击核心")]
+    [SerializeField] float coreAttackDamage = 25f;
+    [SerializeField] float coreAttackInterval = 1f;
 
     Transform[] waypoints;
     Transform destination;
-    float destinationRadius;
+    MonsterPath path;
+    CoreHealth coreHealth;
     int waypointIndex;
-    bool attacking;
+    float nextCoreAttackTime;
 
     Animator animator;
     int animHash;
     int currentAnim = -1;
-    float nextAttackHitTime;
-    CoreHealth attackTarget;
 
     void Awake()
     {
@@ -39,17 +35,17 @@ public class MonsterChaseAI : MonoBehaviour
         animHash = Animator.StringToHash(animParameter);
     }
 
-    public void Configure(MonsterPath path)
+    public void Configure(MonsterPath monsterPath)
     {
-        if (path == null) return;
+        if (monsterPath == null) return;
 
-        waypoints = path.Waypoints;
-        destination = path.Destination;
-        destinationRadius = path.DestinationRadius;
-        ResolveAttackTarget();
+        path = monsterPath;
+        waypoints = monsterPath.Waypoints;
+        destination = monsterPath.Destination;
+        coreHealth = destination != null ? destination.GetComponent<CoreHealth>() : null;
         waypointIndex = 0;
-        attacking = false;
         currentAnim = -1;
+        nextCoreAttackTime = 0f;
     }
 
     void Update()
@@ -57,20 +53,14 @@ public class MonsterChaseAI : MonoBehaviour
         if (TryGetComponent(out MonsterHealth health) && health.IsDead)
             return;
 
-        if (attacking)
+        if (path != null && path.IsInDestinationRange(transform.position))
         {
-            if (ShouldLeaveAttack())
-            {
-                attacking = false;
-            }
-            else
-            {
-                if (destination != null)
-                    FaceFlat(destination.position);
-                SetAnim(attackAnimValue);
-                TryDealAttackDamage();
-                return;
-            }
+            if (destination != null)
+                FaceFlat(destination.position);
+
+            TryAttackCore();
+            SetAnim(attackAnimValue);
+            return;
         }
 
         Transform target = GetMoveTarget();
@@ -81,18 +71,10 @@ public class MonsterChaseAI : MonoBehaviour
         }
 
         Vector3 flat = FlatOnGround(target.position);
-        if (IsHeadingToDestination())
+        if (Reached(flat))
         {
-            if (InDestinationZone())
-            {
-                attacking = true;
-                SetAnim(attackAnimValue);
-                return;
-            }
-        }
-        else if (Reached(flat))
-        {
-            waypointIndex++;
+            if (HasMoreWaypoints())
+                waypointIndex++;
             return;
         }
 
@@ -103,41 +85,23 @@ public class MonsterChaseAI : MonoBehaviour
 
     Transform GetMoveTarget()
     {
-        if (waypoints != null && waypointIndex < waypoints.Length)
+        if (HasMoreWaypoints())
             return waypoints[waypointIndex];
+
+        // 路点走完后只朝范围中心靠近；进入 MonsterPath 球形范围即攻击，不必贴中心点
         return destination;
     }
 
-    bool IsHeadingToDestination()
+    bool HasMoreWaypoints()
     {
-        return destination != null && (waypoints == null || waypointIndex >= waypoints.Length);
-    }
-
-    bool ShouldLeaveAttack()
-    {
-        if (destination == null)
-            return true;
-
-        return !InDestinationZone();
-    }
-
-    bool InDestinationZone()
-    {
-        if (destination == null)
-            return false;
-
-        return FlatDistance(transform.position, destination.position) <= destinationRadius;
+        return waypoints != null && waypointIndex < waypoints.Length;
     }
 
     bool Reached(Vector3 flatTarget)
     {
-        return FlatDistance(transform.position, flatTarget) <= arriveDistance;
-    }
-
-    static float FlatDistance(Vector3 a, Vector3 b)
-    {
-        a.y = b.y;
-        return Vector3.Distance(a, b);
+        Vector3 pos = transform.position;
+        pos.y = flatTarget.y;
+        return Vector3.Distance(pos, flatTarget) <= arriveDistance;
     }
 
     Vector3 FlatOnGround(Vector3 world)
@@ -172,34 +136,15 @@ public class MonsterChaseAI : MonoBehaviour
         animator.SetInteger(animHash, value);
     }
 
-    void ResolveAttackTarget()
+    void TryAttackCore()
     {
-        attackTarget = null;
-
-        if (attackTargetObject != null)
-            attackTarget = attackTargetObject.GetComponent<CoreHealth>();
-
-        if (attackTarget == null && destination != null)
-            attackTarget = destination.GetComponent<CoreHealth>();
-    }
-
-    /// <summary>
-    /// 攻击动画 Add Event 可调用此函数（出手帧）；未加事件时也会在攻击状态下按冷却自动扣血。
-    /// </summary>
-    public void OnAttackHit()
-    {
-        TryDealAttackDamage();
-    }
-
-    void TryDealAttackDamage()
-    {
-        if (!attacking || attackTarget == null || attackTarget.IsDestroyed)
+        if (coreHealth == null || coreHealth.IsDestroyed)
             return;
 
-        if (Time.time < nextAttackHitTime)
+        if (Time.time < nextCoreAttackTime)
             return;
 
-        nextAttackHitTime = Time.time + attackHitCooldown;
-        attackTarget.TakeDamage(attackDamage);
+        nextCoreAttackTime = Time.time + coreAttackInterval;
+        coreHealth.TakeDamage(coreAttackDamage);
     }
 }

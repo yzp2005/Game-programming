@@ -2,7 +2,8 @@ using System;
 using UnityEngine;
 
 /// <summary>
-/// 怪物生命值：扣血、死亡动画、可选回血。挂怪物根物体。
+/// 怪物生命值：扣血、死亡、受伤后延迟缓慢回血。
+/// 挂到怪物根物体（与 MonsterChaseAI、Animator 同级）。
 /// </summary>
 [DisallowMultipleComponent]
 public class MonsterHealth : MonoBehaviour
@@ -13,7 +14,9 @@ public class MonsterHealth : MonoBehaviour
 
     [Header("回血")]
     [SerializeField] bool enableRegen = true;
+    [Tooltip("每秒恢复血量")]
     [SerializeField] float regenPerSecond = 4f;
+    [Tooltip("受伤后等待多久才开始回血")]
     [SerializeField] float regenDelayAfterDamage = 3f;
 
     [Header("死亡")]
@@ -26,6 +29,7 @@ public class MonsterHealth : MonoBehaviour
     public event Action<float, float> OnHealthChanged;
     public event Action<float> OnDamaged;
     public event Action OnDeath;
+    public static event Action<MonsterHealth> OnAnyDeath;
 
     public bool IsDead { get; private set; }
     public float MaxHealth => maxHealth;
@@ -104,7 +108,22 @@ public class MonsterHealth : MonoBehaviour
                 col.enabled = false;
         }
 
+        if (TryGetComponent(out Rigidbody rb))
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.useGravity = false;
+            rb.isKinematic = true;
+        }
+
+        if (TryGetComponent(out CharacterController controller))
+            controller.enabled = false;
+
+        if (TryGetComponent(out MinimapTrackable minimapTrackable))
+            minimapTrackable.enabled = false;
+
         OnDeath?.Invoke();
+        OnAnyDeath?.Invoke(this);
         NotifyHealthChanged();
 
         if (destroyOnDeath)

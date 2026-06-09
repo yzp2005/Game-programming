@@ -320,6 +320,7 @@ public class MinimapController : MonoBehaviour
             Image image = go.GetComponent<Image>();
             image.color = GetColor(kind);
             image.raycastTarget = false;
+            EnsureBlipSprite(image);
         }
 
         RectTransform rt = go.GetComponent<RectTransform>();
@@ -329,10 +330,21 @@ public class MinimapController : MonoBehaviour
             rt.sizeDelta = defaultBlipSize;
 
         if (go.TryGetComponent(out Image prefabImage))
+        {
             prefabImage.color = GetColor(kind);
+            EnsureBlipSprite(prefabImage);
+        }
 
         rt.SetAsLastSibling();
         return rt;
+    }
+
+    static void EnsureBlipSprite(Image image)
+    {
+        if (image.sprite != null)
+            return;
+
+        image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
     }
 
     Color GetColor(MinimapTrackable.BlipKind kind)

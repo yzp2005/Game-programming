@@ -2056,7 +2056,7 @@ GameObject:
   - component: {fileID: 348136144413430357}
   - component: {fileID: 2145535987643203298}
   - component: {fileID: 6819410337351923241}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: SkeletonPBRMaskTint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2147,9 +2147,8 @@ MonoBehaviour:
   idleAnimValue: 0
   runAnimValue: 1
   attackAnimValue: 2
-  attackTargetObject: {fileID: 0}
-  attackDamage: 10
-  attackHitCooldown: 0.8
+  coreAttackDamage: 25
+  coreAttackInterval: 1
 --- !u!114 &348136144413430357
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2187,7 +2186,7 @@ MonoBehaviour:
   fillBar: {fileID: 1091017177783607293}
   fullWidth: 0
   hideOnDeath: 1
-  smoothSpeed: 1
+  smoothSpeed: 7
 --- !u!54 &6819410337351923241
 Rigidbody:
   m_ObjectHideFlags: 0

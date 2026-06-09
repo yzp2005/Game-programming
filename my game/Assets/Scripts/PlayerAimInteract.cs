@@ -34,7 +34,7 @@ public class PlayerAimInteract : MonoBehaviour
 
     void Update()
     {
-        if (PlayerInputLock.IsLocked)
+        if (PlayerInputLock.IsLocked || NpcPlacementController.IsActive)
         {
             HidePrompt();
             return;

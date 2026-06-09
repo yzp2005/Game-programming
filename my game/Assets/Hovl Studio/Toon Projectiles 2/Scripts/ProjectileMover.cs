@@ -12,10 +12,18 @@ public class ProjectileMover : MonoBehaviour
     public GameObject flash;
     private Rigidbody rb;
     public GameObject[] Detached;
+    public Vector3 targetPoint = Vector3.zero;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
+    }
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        if (rb == null)
+            rb = GetComponent<Rigidbody>();
+
         if (flash != null)
         {
             var flashInstance = Instantiate(flash, transform.position, Quaternion.identity);
@@ -31,23 +39,29 @@ public class ProjectileMover : MonoBehaviour
                 Destroy(flashInstance, flashPsParts.main.duration);
             }
         }
-        Destroy(gameObject,5);
-	}
 
-    void FixedUpdate ()
-    {
-		if (speed != 0)
+        // 如果设置了目标点，计算方向并设置初始朝向
+        if (targetPoint != Vector3.zero)
         {
-            rb.velocity = transform.forward * speed;
-            //transform.position += transform.forward * (speed * Time.deltaTime);         
+            Vector3 direction = (targetPoint - transform.position).normalized;
+            transform.rotation = Quaternion.LookRotation(direction);
         }
-	}
 
-    //https ://docs.unity3d.com/ScriptReference/Rigidbody.OnCollisionEnter.html
+        Destroy(gameObject, 5);
+    }
+
+    void FixedUpdate()
+    {
+        if (rb == null || speed == 0)
+            return;
+
+        rb.velocity = transform.forward * speed;
+    }
+
     void OnCollisionEnter(Collision collision)
     {
-        //Lock all axes movement and rotation
-        rb.constraints = RigidbodyConstraints.FreezeAll;
+        if (rb != null)
+            rb.constraints = RigidbodyConstraints.FreezeAll;
         speed = 0;
 
         ContactPoint contact = collision.contacts[0];

@@ -19,7 +19,7 @@ public class WaveManager : MonoBehaviour
     }
 
     [SerializeField] Wave[] waves;
-    [SerializeField] bool autoStartOnPlay = true;
+    [SerializeField] bool autoStartOnPlay;
     [SerializeField] bool loopWaves;
     [Min(0f)] [SerializeField] float delayBetweenWaves = 3f;
 
@@ -33,19 +33,12 @@ public class WaveManager : MonoBehaviour
             BeginWaves();
     }
 
-    void OnDisable()
-    {
-        StopWaves();
-    }
-
-    /// <summary>开始跑波次。由 LevelController 或外部脚本调用。</summary>
     public void BeginWaves()
     {
         StopWaves();
         waveRoutine = StartCoroutine(RunWaves());
     }
 
-    /// <summary>停止当前波次协程。</summary>
     public void StopWaves()
     {
         if (waveRoutine == null)

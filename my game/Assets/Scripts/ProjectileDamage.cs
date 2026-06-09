@@ -8,6 +8,13 @@ public class ProjectileDamage : MonoBehaviour
 {
     [SerializeField] float damage = 15f;
 
+    public float Damage => damage;
+
+    public void SetDamage(float amount)
+    {
+        damage = Mathf.Max(0f, amount);
+    }
+
     void OnCollisionEnter(Collision collision)
     {
         TryDamage(collision.collider);

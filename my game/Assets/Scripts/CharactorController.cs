@@ -1,84 +1,43 @@
+using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// 第三人称角色控制：移动、跳跃、右键瞄准、法球攻击。
-/// 与 CameraController / MagicCircleFade 共用「空中按住右键须落地后松开一次」逻辑。
-/// </summary>
-[DefaultExecutionOrder(100)]
 [RequireComponent(typeof(CharacterController))]
 public class CharactorController : MonoBehaviour
 {
-    #region Constants
+    // ==================== 基础组件 ====================
+    private CharacterController characterController;
+    private Animator animator;
+    private float verticalVelocity;
 
+    // ==================== 动画参数 ====================
     private const int IdleAnimValue = 1;
     private const int MoveAnimValue = 10;
     private const int JumpAnimValue = 13;
     private const int UpperAttackAnimValue = 1;
 
-    private const float MoveInputThreshold = 0.0001f;
-    private const float AimDirectionMinSqr = 0.01f;
-    private const float GroundedStickVelocity = -2f;
-
     private static readonly int AnimParam = Animator.StringToHash("animation");
     private static readonly int UpperAnimParam = Animator.StringToHash("upperanimation");
 
-    #endregion
-
-    #region Serialized Fields
-
+    // ==================== 移动设置 ====================
     [Header("移动设置")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float rotationSpeed = 10f;
     [SerializeField] private float jumpHeight = 1.5f;
     [SerializeField] private float gravity = -20f;
 
+    // ==================== 攻击设置 ====================
     [Header("攻击设置")]
     [SerializeField] private Animation camAnim;
+    private bool isHoldingAttack;
 
+    // ==================== 法球设置 ====================
     [Header("法球设置")]
     public GameObject firePoint;
     public GameObject[] projectilePrefabs;
-    [SerializeField] private int currentProjectileIndex;
-    [Tooltip("准星射线命中且在此距离内才朝命中点飞；更近/更远/未命中则沿相机准星方向")]
-    [SerializeField] private float minAimHitDistance = 2.5f;
-    [SerializeField] private float maxAimHitDistance = 80f;
+    private int currentProjectileIndex;
 
-    #endregion
-
-    #region Private State
-
-    private CharacterController characterController;
-    private Animator animator;
-    private float verticalVelocity;
-
-    private bool isHoldingAttack;
-    private bool pendingProjectileFire;
-    /// <summary>曾在空中按住右键则落地后须先松一次，才进入站桩瞄准/开火。</summary>
-    private bool hasRmbReleasedSinceAir = true;
-
-    #endregion
-
-    #region Properties
-
-    private bool IsGrounded => characterController.isGrounded;
-    private bool IsInAir => !IsGrounded;
-    private bool CanGroundAim => IsGrounded && hasRmbReleasedSinceAir;
-
-    #endregion
-
-    #region Unity Lifecycle
-
-    private void OnEnable()
-    {
-        PlayerInputLock.OnLockChanged += OnPlayerInputLockChanged;
-    }
-
-    private void OnDisable()
-    {
-        PlayerInputLock.OnLockChanged -= OnPlayerInputLockChanged;
-    }
-
-    private void Start()
+    // ==================== 生命周期 ====================
+    void Start()
     {
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
@@ -88,191 +47,133 @@ public class CharactorController : MonoBehaviour
             animator.applyRootMotion = false;
             animator.SetInteger(AnimParam, IdleAnimValue);
         }
-
-        if (PlayerInputLock.IsLocked)
-            EnterDialogueStance();
     }
 
-    private void Update()
+    void Update()
     {
-        if (PlayerInputLock.IsLocked)
-            return;
+        if (NpcPlacementController.IsActive)
+            ResetAttackState();
 
-        UpdateRmbReleasedSinceAirFlag();
         HandleMovement();
         HandleAttack();
         HandleAnimation();
     }
 
-    private void LateUpdate()
+    // ==================== 移动逻辑 ====================
+    void HandleMovement()
     {
-        if (PlayerInputLock.IsLocked || !pendingProjectileFire)
-            return;
-
-        pendingProjectileFire = false;
-
-        if (!CanGroundAim || !Input.GetMouseButton(1))
-            return;
-
-        FireProjectile();
-    }
-
-    #endregion
-
-    #region Input Lock
-
-    private void OnPlayerInputLockChanged(bool locked)
-    {
-        if (locked)
-            EnterDialogueStance();
-    }
-
-    private void EnterDialogueStance()
-    {
-        isHoldingAttack = false;
-        pendingProjectileFire = false;
-
-        if (animator == null)
-            return;
-
-        animator.speed = 1f;
-        animator.SetInteger(AnimParam, IdleAnimValue);
-        animator.SetInteger(UpperAnimParam, 0);
-    }
-
-    #endregion
-
-    #region Right-Click Air Rule
-
-    private void UpdateRmbReleasedSinceAirFlag()
-    {
-        if (IsInAir)
+        // 瞄准模式：只能转向，不能移动（摆放模式下禁用）
+        if (!NpcPlacementController.IsActive && Input.GetMouseButton(1))
         {
-            if (Input.GetMouseButton(1))
-                hasRmbReleasedSinceAir = false;
-            return;
-        }
-
-        if (Input.GetMouseButtonUp(1))
-            hasRmbReleasedSinceAir = true;
-
-        // 空中已松开右键时，落地不会收到 MouseButtonUp，需在地上且未按右键时恢复
-        if (!Input.GetMouseButton(1))
-            hasRmbReleasedSinceAir = true;
-    }
-
-    #endregion
-
-    #region Movement
-
-    private void HandleMovement()
-    {
-        if (IsInAir)
-            ClearUpperBodyAttackState();
-
-        if (Input.GetMouseButton(1) && CanGroundAim)
-        {
-            HandleGroundedAimMovement();
-            return;
-        }
-
-        HandleLocomotion();
-    }
-
-    /// <summary>站桩瞄准：只转向与垂直位移，不走路面移动。</summary>
-    private void HandleGroundedAimMovement()
-    {
-        if (Camera.main == null)
-            return;
-
-        Vector3 camForward = Camera.main.transform.forward;
-        camForward.y = 0f;
-        if (camForward.sqrMagnitude > MoveInputThreshold)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(camForward.normalized, Vector3.up);
-            if (Input.GetMouseButtonDown(1))
-                transform.rotation = targetRotation;
-            else
+            Vector3 camForward = Camera.main.transform.forward;
+            camForward.y = 0;
+            if (camForward.sqrMagnitude > 0.0001f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(camForward, Vector3.up);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
+            return;
         }
 
-        ApplyVerticalPhysics(allowJump: true);
-        characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
-    }
-
-    private void HandleLocomotion()
-    {
-        if (Camera.main == null)
-            return;
-
+        // 获取输入
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        GetCameraPlanarAxes(out Vector3 cameraForward, out Vector3 cameraRight);
-        Vector3 moveDirection = cameraForward * vertical + cameraRight * horizontal;
+        // 计算移动方向（基于相机朝向）
+        Vector3 cameraForward = Camera.main.transform.forward;
+        Vector3 cameraRight = Camera.main.transform.right;
+        cameraForward.y = 0;
+        cameraRight.y = 0;
+        cameraForward.Normalize();
+        cameraRight.Normalize();
 
-        if (moveDirection.sqrMagnitude > MoveInputThreshold)
+        Vector3 moveDirection = cameraForward * vertical + cameraRight * horizontal;
+        bool isMoving = moveDirection.sqrMagnitude > 0.0001f;
+        bool isGrounded = characterController.isGrounded;
+
+        // 重力与跳跃
+        if (isGrounded && verticalVelocity < 0f)
+        {
+            verticalVelocity = -2f;
+        }
+
+        if (isGrounded && Input.GetButtonDown("Jump"))
+        {
+            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
+        }
+
+        // 移动时转向
+        if (isMoving)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        ApplyVerticalPhysics(allowJump: true);
-
+        // 应用移动
+        verticalVelocity += gravity * Time.deltaTime;
         Vector3 motion = moveDirection * moveSpeed;
         motion.y = verticalVelocity;
         characterController.Move(motion * Time.deltaTime);
     }
 
-    private void ApplyVerticalPhysics(bool allowJump)
+    // ==================== 攻击逻辑 ====================
+    void HandleAttack()
     {
-        if (IsGrounded && verticalVelocity < 0f)
-            verticalVelocity = GroundedStickVelocity;
-
-        if (allowJump && IsGrounded && Input.GetButtonDown("Jump"))
-            verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
-
-        verticalVelocity += gravity * Time.deltaTime;
-    }
-
-    private void GetCameraPlanarAxes(out Vector3 forward, out Vector3 right)
-    {
-        forward = Camera.main.transform.forward;
-        right = Camera.main.transform.right;
-        forward.y = 0f;
-        right.y = 0f;
-        forward.Normalize();
-        right.Normalize();
-    }
-
-    #endregion
-
-    #region Attack
-
-    private void HandleAttack()
-    {
-        if (IsInAir)
-        {
-            isHoldingAttack = false;
+        if (NpcPlacementController.IsActive)
             return;
+
+        // 按住右键 + 点击左键：攻击
+        if (Input.GetMouseButton(1) && Input.GetMouseButtonDown(0))
+        {
+            FireProjectile();
         }
 
-        if (Input.GetMouseButton(1) && Input.GetMouseButtonDown(0) && hasRmbReleasedSinceAir)
-            pendingProjectileFire = true;
-
+        // 按住右键：播放攻击动画并暂停在蓄力帧
         if (Input.GetMouseButtonDown(1))
+        {
             isHoldingAttack = true;
+        }
 
+        // 松开右键：恢复动画速度
         if (Input.GetMouseButtonUp(1))
         {
             isHoldingAttack = false;
-            if (animator != null)
-                animator.speed = 1f;
+            animator.speed = 1f;
         }
     }
 
-    private void ClearUpperBodyAttackState()
+    void HandleAnimation()
     {
+        if (animator == null) return;
+
+        // 下肢动画
+        int bodyAnimValue;
+        if (!characterController.isGrounded)
+        {
+            bodyAnimValue = JumpAnimValue;
+        }
+        else if (isHoldingAttack && !NpcPlacementController.IsActive)
+        {
+            bodyAnimValue = IdleAnimValue;
+        }
+        else
+        {
+            float horizontal = Input.GetAxis("Horizontal");
+            float vertical = Input.GetAxis("Vertical");
+            bool isMoving = Mathf.Abs(horizontal) + Mathf.Abs(vertical) > 0.0001f;
+            bodyAnimValue = isMoving ? MoveAnimValue : IdleAnimValue;
+        }
+
+        animator.SetInteger(AnimParam, bodyAnimValue);
+        bool upperAttack = isHoldingAttack && !NpcPlacementController.IsActive;
+        animator.SetInteger(UpperAnimParam, upperAttack ? UpperAttackAnimValue : 0);
+    }
+
+    void ResetAttackState()
+    {
+        if (!isHoldingAttack && (animator == null || animator.speed >= 1f))
+            return;
+
         isHoldingAttack = false;
         if (animator == null)
             return;
@@ -281,114 +182,47 @@ public class CharactorController : MonoBehaviour
         animator.SetInteger(UpperAnimParam, 0);
     }
 
-    #endregion
-
-    #region Animation
-
-    private void HandleAnimation()
-    {
-        if (animator == null)
-            return;
-
-        int bodyAnim = GetBodyAnimValue();
-        int upperAnim = IsInAir ? 0 : (isHoldingAttack ? UpperAttackAnimValue : 0);
-
-        animator.SetInteger(AnimParam, bodyAnim);
-        animator.SetInteger(UpperAnimParam, upperAnim);
-    }
-
-    private int GetBodyAnimValue()
-    {
-        if (IsInAir)
-            return JumpAnimValue;
-
-        if (isHoldingAttack)
-            return IdleAnimValue;
-
-        float horizontal = Input.GetAxis("Horizontal");
-        float vertical = Input.GetAxis("Vertical");
-        bool isMoving = Mathf.Abs(horizontal) + Mathf.Abs(vertical) > MoveInputThreshold;
-        return isMoving ? MoveAnimValue : IdleAnimValue;
-    }
-
-    #endregion
-
-    #region Projectile
-
-    private void FireProjectile()
-    {
-        if (firePoint == null || projectilePrefabs == null || projectilePrefabs.Length == 0 || Camera.main == null)
-            return;
-
-        if (camAnim != null)
-            camAnim.Play(camAnim.clip.name);
-
-        Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-        Vector3 direction = GetFireDirection(ray);
-
-        GameObject prefab = projectilePrefabs[currentProjectileIndex];
-        Instantiate(prefab, firePoint.transform.position, Quaternion.LookRotation(direction));
-    }
-
-    /// <summary>
-    /// 近处墙体忽略；未命中或超出 maxAimHitDistance 时沿相机准星方向（含俯仰）。
-    /// </summary>
-    private Vector3 GetFireDirection(Ray ray)
-    {
-        if (TryGetAimHit(ray, maxAimHitDistance, out RaycastHit hit))
-        {
-            Vector3 toTarget = hit.point - firePoint.transform.position;
-            if (toTarget.sqrMagnitude >= AimDirectionMinSqr)
-                return toTarget.normalized;
-        }
-
-        return ray.direction.normalized;
-    }
-
-    private bool TryGetAimHit(Ray ray, float maxDistance, out RaycastHit bestHit)
-    {
-        bestHit = default;
-        RaycastHit[] hits = Physics.RaycastAll(ray, maxDistance, ~0, QueryTriggerInteraction.Ignore);
-        if (hits == null || hits.Length == 0)
-            return false;
-
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        foreach (RaycastHit hit in hits)
-        {
-            if (hit.collider == null || IsUnderSameCharacter(hit.collider.transform))
-                continue;
-
-            if (hit.distance < minAimHitDistance)
-                continue;
-
-            bestHit = hit;
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool IsUnderSameCharacter(Transform t)
-    {
-        return t == transform || t.IsChildOf(transform);
-    }
-
-    #endregion
-
-    #region Animation Events
-
+    // 动画事件：攻击动作到达蓄力帧时暂停
     public void OnAttackHoldPoint()
     {
-        if (isHoldingAttack && animator != null && IsGrounded)
+        if (isHoldingAttack && animator != null)
+        {
             animator.speed = 0f;
+        }
     }
 
+    // 动画事件：攻击动画播放完毕时重置状态
     public void OnAttackFinished()
     {
-        if (animator != null)
-            animator.SetInteger(UpperAnimParam, 0);
+        animator.SetInteger(UpperAnimParam, 0);
     }
 
-    #endregion
+    void FireProjectile()
+    {
+        if (firePoint == null || projectilePrefabs == null || projectilePrefabs.Length == 0) return;
+        if (Camera.main == null) return;
+
+        // 相机震动
+        if (camAnim != null)
+        {
+            camAnim.Play(camAnim.clip.name);
+        }
+
+        // 从相机中心发射射线，检测与障碍物的交点
+        Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+        Vector3 targetPoint;
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 1000f))
+        {
+            targetPoint = hit.point;
+        }
+        else
+        {
+            targetPoint = ray.GetPoint(1000f);
+        }
+
+        // 生成法球，传入目标点
+        GameObject projectile = Instantiate(projectilePrefabs[currentProjectileIndex], firePoint.transform.position, Quaternion.identity) as GameObject;
+        projectile.GetComponent<ProjectileMover>().targetPoint = targetPoint;
+    }
 }
