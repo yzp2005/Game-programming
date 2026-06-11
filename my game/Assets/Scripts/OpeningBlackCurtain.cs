@@ -1,67 +1,85 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// 开场黑幕：全黑 →（可选逐句旁白）→ 渐变透明 → 进入游戏 / 对话。
-/// </summary>
+/// <summary>开场黑幕：全黑 →（可选旁白）→ 淡出 → 可选对话。</summary>
 [DefaultExecutionOrder(-250)]
 [RequireComponent(typeof(CanvasGroup))]
 public class OpeningBlackCurtain : MonoBehaviour
 {
     [Header("时间")]
-    [Tooltip("黑幕出现后、旁白开始前的等待（秒）")]
-    [SerializeField] private float holdBeforeNarration = 0.5f;
-    [Tooltip("最后一句旁白结束后、黑幕淡出前的额外等待（秒）")]
-    [SerializeField] private float holdAfterNarration = 2f;
-    [Tooltip("从黑到完全透明的渐变时长（秒）")]
-    [SerializeField] private float fadeDuration = 1f;
-    [Header("流程")]
-    [SerializeField] private bool playOnStart = true;
-    [SerializeField] private bool lockPlayerInput = true;
-    [SerializeField] private bool startDialogueAfterFade = true;
-    [SerializeField] private DialogueReader dialogueReader;
-    [SerializeField] private TextAsset dialogueAfterFade;
+    [SerializeField] float holdBeforeNarration = 0.5f;
+    [SerializeField] float holdAfterNarration = 2f;
+    [SerializeField] float fadeDuration = 1f;
 
-    [Header("逐句旁白（可选）")]
-    [SerializeField] private IntroNarrationLines narration;
-    [Tooltip("勾选后等旁白全部播完再淡出黑幕")]
-    [SerializeField] private bool waitForNarrationBeforeFade = true;
+    [Header("流程")]
+    [SerializeField] bool playOnStart = true;
+    [SerializeField] bool lockPlayerInput = true;
+    [SerializeField] bool startDialogueAfterFade = true;
+    [SerializeField] DialogueReader dialogueReader;
+    [SerializeField] TextAsset dialogueAfterFade;
+
+    [Header("旁白（可选）")]
+    [SerializeField] IntroNarrationLines narration;
+    [SerializeField] bool waitForNarrationBeforeFade = true;
 
     [Header("跳过")]
-    [SerializeField] private GameObject skipButtonRoot;
+    [SerializeField] GameObject skipButtonRoot;
 
-    [Header("对话结束后任务")]
-    [SerializeField] private QuestDisplay questDisplay;
+    [Header("对话结束后")]
+    [SerializeField] string questFlagOnDialogueDone = "intro_quest";
 
-    private const string IntroQuestName = "Find the villager";
-    private const string IntroQuestContent = "Find a villager and talk with him";
+    [Header("只播一次（跨场景保留）")]
+    [Tooltip("开场全流程结束后 Set；再次进场景时若已有则跳过黑幕与对话")]
+    [SerializeField] string introCompleteFlag = "intro_played";
 
-    private CanvasGroup canvasGroup;
-    private Coroutine sequenceCoroutine;
-    private bool isPlaying;
-    private bool skipToLastLineRequested;
+    CanvasGroup canvasGroup;
+    bool isPlaying;
+    bool skipToLastLineRequested;
 
     public bool IsIntroPlaying => isPlaying;
 
     void Awake()
     {
         canvasGroup = GetComponent<CanvasGroup>();
-        canvasGroup.alpha = 1f;
-        canvasGroup.blocksRaycasts = true;
-        canvasGroup.interactable = false;
         gameObject.SetActive(true);
+
+        if (ShouldSkipIntro())
+        {
+            ApplySkipIntroState();
+            return;
+        }
+
+        SetCurtainOpaque(true);
 
         if (skipButtonRoot != null)
             skipButtonRoot.SetActive(true);
-
-        if (lockPlayerInput)
-            PlayerInputLock.SetLocked(true);
     }
 
     void Start()
     {
-        if (playOnStart)
-            Play();
+        if (ShouldSkipIntro() || !playOnStart)
+            return;
+
+        Play();
+    }
+
+    bool ShouldSkipIntro()
+    {
+        return !string.IsNullOrWhiteSpace(introCompleteFlag)
+            && GameEventManager.Has(introCompleteFlag.Trim());
+    }
+
+    void ApplySkipIntroState()
+    {
+        canvasGroup.alpha = 0f;
+        canvasGroup.blocksRaycasts = false;
+        canvasGroup.interactable = false;
+
+        if (skipButtonRoot != null)
+            skipButtonRoot.SetActive(false);
+
+        narration?.StopImmediately();
+        gameObject.SetActive(false);
     }
 
     public void Play()
@@ -70,10 +88,12 @@ public class OpeningBlackCurtain : MonoBehaviour
             return;
 
         skipToLastLineRequested = false;
-        sequenceCoroutine = StartCoroutine(PlaySequence());
+        if (lockPlayerInput)
+            PlayerInputLock.SetLocked(true);
+
+        StartCoroutine(PlaySequence());
     }
 
-    /// <summary>平滑跳到黑幕旁白最后一句，之后仍按正常节奏淡出黑幕。</summary>
     public void SkipIntro()
     {
         if (!isPlaying || skipToLastLineRequested)
@@ -86,20 +106,14 @@ public class OpeningBlackCurtain : MonoBehaviour
     IEnumerator PlaySequence()
     {
         isPlaying = true;
-        canvasGroup.alpha = 1f;
-        gameObject.SetActive(true);
-
-        if (lockPlayerInput)
-            PlayerInputLock.SetLocked(true);
+        SetCurtainOpaque(true);
 
         if (!skipToLastLineRequested)
-            yield return WaitSeconds(holdBeforeNarration);
+            yield return WaitSkippable(holdBeforeNarration);
 
         if (narration != null)
         {
-            // 黑幕前按 E 时，Begin 会通过 pendingSkipToLastLine 直接进入末句流程
             narration.Begin();
-
             if (waitForNarrationBeforeFade)
             {
                 while (!narration.IsFinished)
@@ -107,25 +121,12 @@ public class OpeningBlackCurtain : MonoBehaviour
             }
         }
 
-        yield return WaitSeconds(holdAfterNarration);
-
-        float fadeTime = fadeDuration;
-        if (fadeTime > 0f)
-        {
-            float elapsed = 0f;
-            float startAlpha = canvasGroup.alpha;
-            while (elapsed < fadeTime)
-            {
-                elapsed += Time.deltaTime;
-                canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, Mathf.Clamp01(elapsed / fadeTime));
-                yield return null;
-            }
-        }
-
+        yield return WaitSkippable(holdAfterNarration);
+        yield return FadeOut(fadeDuration);
         FinishIntro();
     }
 
-    IEnumerator WaitSeconds(float duration)
+    IEnumerator WaitSkippable(float duration)
     {
         if (duration <= 0f)
             yield break;
@@ -138,9 +139,28 @@ public class OpeningBlackCurtain : MonoBehaviour
         }
     }
 
+    IEnumerator FadeOut(float duration)
+    {
+        if (duration <= 0f)
+        {
+            canvasGroup.alpha = 0f;
+            yield break;
+        }
+
+        float elapsed = 0f;
+        float startAlpha = canvasGroup.alpha;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            canvasGroup.alpha = Mathf.Lerp(startAlpha, 0f, elapsed / duration);
+            yield return null;
+        }
+
+        canvasGroup.alpha = 0f;
+    }
+
     void FinishIntro()
     {
-        canvasGroup.alpha = 0f;
         canvasGroup.blocksRaycasts = false;
 
         if (skipButtonRoot != null)
@@ -152,16 +172,16 @@ public class OpeningBlackCurtain : MonoBehaviour
             dialogueReader.StartReading(dialogueAfterFade);
         }
         else
-            OnDialogueDone();
+        {
+            if (lockPlayerInput)
+                PlayerInputLock.SetLocked(false);
+            MarkIntroComplete();
+            SetQuestFlag();
+        }
 
         gameObject.SetActive(false);
-
-        if (!startDialogueAfterFade && lockPlayerInput)
-            PlayerInputLock.SetLocked(false);
-
         isPlaying = false;
         skipToLastLineRequested = false;
-        sequenceCoroutine = null;
     }
 
     void OnDialogueDone()
@@ -169,15 +189,26 @@ public class OpeningBlackCurtain : MonoBehaviour
         if (dialogueReader != null)
             dialogueReader.ReadingFinished -= OnDialogueDone;
 
-        if (questDisplay == null)
-            questDisplay = FindObjectOfType<QuestDisplay>(true);
+        MarkIntroComplete();
+        SetQuestFlag();
+    }
 
-        if (questDisplay == null)
-        {
-            Debug.LogWarning("[OpeningBlackCurtain] 未指定 Quest Display。", this);
-            return;
-        }
+    void MarkIntroComplete()
+    {
+        if (!string.IsNullOrWhiteSpace(introCompleteFlag))
+            GameEventManager.Set(introCompleteFlag.Trim());
+    }
 
-        questDisplay.SetCurrentQuest(IntroQuestName, IntroQuestContent);
+    void SetQuestFlag()
+    {
+        if (!string.IsNullOrWhiteSpace(questFlagOnDialogueDone))
+            GameEventManager.Set(questFlagOnDialogueDone.Trim());
+    }
+
+    void SetCurtainOpaque(bool opaque)
+    {
+        canvasGroup.alpha = opaque ? 1f : 0f;
+        canvasGroup.blocksRaycasts = opaque;
+        canvasGroup.interactable = false;
     }
 }

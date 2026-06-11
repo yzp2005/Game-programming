@@ -26,6 +26,9 @@ public class GameStatsUI : MonoBehaviour
     int chocolateRemaining;
     bool isRunning;
 
+    public float ElapsedTime => elapsedTime;
+    public bool IsTimerRunning => isRunning;
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -74,6 +77,19 @@ public class GameStatsUI : MonoBehaviour
         RefreshUI();
     }
 
+    public void StopTimer()
+    {
+        isRunning = false;
+        RefreshTimerText();
+    }
+
+    public string GetFormattedTime()
+    {
+        int minutes = Mathf.FloorToInt(elapsedTime / 60f);
+        int seconds = Mathf.FloorToInt(elapsedTime % 60f);
+        return $"{minutes:00}:{seconds:00}";
+    }
+
     public bool CanAfford(int cost) => chocolateRemaining >= cost;
 
     public bool TryPlaceNpc(int chocolateCost)
@@ -113,9 +129,7 @@ public class GameStatsUI : MonoBehaviour
         if (timerText == null)
             return;
 
-        int minutes = Mathf.FloorToInt(elapsedTime / 60f);
-        int seconds = Mathf.FloorToInt(elapsedTime % 60f);
-        timerText.text = $"{minutes:00}:{seconds:00}";
+        timerText.text = GetFormattedTime();
     }
 
     void RefreshKillText()

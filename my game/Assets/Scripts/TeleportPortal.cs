@@ -20,6 +20,12 @@ public class TeleportPortal : MonoBehaviour
     [Tooltip("与目标场景 PlayerSpawnPoint 的 Spawn Id 一致")]
     [SerializeField] private string targetSpawnId;
 
+    [Header("传送瞬间 Flag（可选）")]
+    [Tooltip("按 F 确认传送、加载新场景前 GameEventManager.Set")]
+    [SerializeField] private string[] flagsToAddOnTeleport;
+    [Tooltip("按 F 确认传送、加载新场景前 GameEventManager.Remove")]
+    [SerializeField] private string[] flagsToRemoveOnTeleport;
+
     [Header("Debug（运行时只读）")]
     [SerializeField] private bool _inside;
     [SerializeField] private bool playerInputLocked;
@@ -71,6 +77,7 @@ public class TeleportPortal : MonoBehaviour
         if (string.IsNullOrEmpty(targetSpawnId))
             return;
 
+        ApplyTeleportFlags();
         SceneLoadRunner.LoadScene(targetSceneBuildIndex, targetSpawnId);
     }
 
@@ -108,5 +115,26 @@ public class TeleportPortal : MonoBehaviour
         }
 
         return true;
+    }
+
+    void ApplyTeleportFlags()
+    {
+        if (flagsToAddOnTeleport != null)
+        {
+            foreach (string flag in flagsToAddOnTeleport)
+            {
+                if (!string.IsNullOrWhiteSpace(flag))
+                    GameEventManager.Set(flag.Trim());
+            }
+        }
+
+        if (flagsToRemoveOnTeleport != null)
+        {
+            foreach (string flag in flagsToRemoveOnTeleport)
+            {
+                if (!string.IsNullOrWhiteSpace(flag))
+                    GameEventManager.Remove(flag.Trim());
+            }
+        }
     }
 }

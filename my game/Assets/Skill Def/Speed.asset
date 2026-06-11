@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b95c45fd86edcc4cab2e82cdafb5269, type: 3}
+  m_Name: Speed
+  m_EditorClassIdentifier: 
+  skillId: 1
+  displayName: Speed
+  iconPrefab: {fileID: 2354638213849611415, guid: 270325c75780d7e4a8e26786d30765ec, type: 3}
+  description: Increase movement speed temporarily.
+  cooldown: 30

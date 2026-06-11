@@ -32,6 +32,8 @@ public class IntroNarrationLines : MonoBehaviour
 
     [Header("流程")]
     [SerializeField] private bool playOnStart;
+    [Tooltip("已有此 flag 时不自动播放（与 OpeningBlackCurtain 的 Intro Complete Flag 一致）")]
+    [SerializeField] private string skipIfHasFlag;
 
     [Header("跳到末句（按 E）")]
     [SerializeField] private float skipCrossfadeOutDuration = 0.35f;
@@ -64,8 +66,17 @@ public class IntroNarrationLines : MonoBehaviour
 
     void Start()
     {
+        if (ShouldSkip())
+            return;
+
         if (playOnStart)
             Begin();
+    }
+
+    bool ShouldSkip()
+    {
+        return !string.IsNullOrWhiteSpace(skipIfHasFlag)
+            && GameEventManager.Has(skipIfHasFlag.Trim());
     }
 
     public void Begin()

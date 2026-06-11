@@ -1,35 +1,40 @@
-using System.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
 public class CharactorController : MonoBehaviour
 {
-    // ==================== 基础组件 ====================
-    private CharacterController characterController;
-    private Animator animator;
-    private float verticalVelocity;
+    static readonly int AnimParam = Animator.StringToHash("animation");
+    static readonly int UpperAnimParam = Animator.StringToHash("upperanimation");
 
-    // ==================== 动画参数 ====================
-    private const int IdleAnimValue = 1;
-    private const int MoveAnimValue = 10;
-    private const int JumpAnimValue = 13;
-    private const int UpperAttackAnimValue = 1;
+    const int IdleAnim = 1;
+    const int MoveAnim = 10;
+    const int JumpAnim = 13;
+    const int UpperAttackAnim = 1;
 
-    private static readonly int AnimParam = Animator.StringToHash("animation");
-    private static readonly int UpperAnimParam = Animator.StringToHash("upperanimation");
+    CharacterController characterController;
+    Animator animator;
+    Camera aimCamera;
+    float verticalVelocity;
 
-    // ==================== 移动设置 ====================
-    [Header("移动设置")]
-    [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float rotationSpeed = 10f;
-    [SerializeField] private float jumpHeight = 1.5f;
-    [SerializeField] private float gravity = -20f;
+    bool isHoldingAttack;
+    bool rmbReleasedSinceAir = true;
 
-    // ==================== 攻击设置 ====================
-    [Header("攻击设置")]
-    [SerializeField] private Animation camAnim;
-    private bool isHoldingAttack;
-    private bool rmbReleasedSinceAir = true;
+    [Header("移动")]
+    [SerializeField] float moveSpeed = 5f;
+    [SerializeField] float rotationSpeed = 10f;
+    [SerializeField] float jumpHeight = 1.5f;
+    [SerializeField] float gravity = -20f;
+
+    [Header("攻击")]
+    [SerializeField] Animation camAnim;
+
+    [Header("法球")]
+    public GameObject firePoint;
+    public GameObject[] projectilePrefabs;
+    [SerializeField] float aimMaxDistance = 1000f;
+    [SerializeField] float minAimDistance = 3f;
+    [SerializeField] LayerMask aimLayers = ~0;
+    int currentProjectileIndex;
 
     public bool IsAimInputActive { get; private set; }
 
@@ -38,29 +43,17 @@ public class CharactorController : MonoBehaviour
         && !NpcPlacementController.IsActive
         && rmbReleasedSinceAir;
 
-    // ==================== 法球设置 ====================
-    [Header("法球设置")]
-    public GameObject firePoint;
-    public GameObject[] projectilePrefabs;
-    [SerializeField] private float aimMaxDistance = 1000f;
-    [SerializeField] private float minAimDistance = 3f;
-    [SerializeField] private LayerMask aimLayers = ~0;
-    private int currentProjectileIndex;
-    private Camera aimCamera;
-
-    // ==================== 生命周期 ====================
     void Start()
     {
         characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        aimCamera = Camera.main;
 
         if (animator != null)
         {
             animator.applyRootMotion = false;
-            animator.SetInteger(AnimParam, IdleAnimValue);
+            ApplyAnimation(forceIdle: true);
         }
-
-        aimCamera = Camera.main;
     }
 
     void Update()
@@ -68,22 +61,28 @@ public class CharactorController : MonoBehaviour
         if (NpcPlacementController.IsActive)
             ResetAttackState();
 
+        if (PlayerInputLock.IsLocked)
+        {
+            IsAimInputActive = false;
+            ApplyVerticalMotionOnly();
+            ApplyAnimation(forceIdle: true);
+            return;
+        }
+
         UpdateRmbAirRule();
         IsAimInputActive = CanEnterCombat && Input.GetMouseButton(1);
 
         HandleMovement();
         HandleAttack();
-        HandleAnimation();
+        ApplyAnimation();
     }
 
-    // ==================== 移动逻辑 ====================
     void HandleMovement()
     {
-        // 瞄准模式：只能在地面转向，不能移动（空中按住右键落地后须先松开）
         if (IsAimInputActive)
         {
             Vector3 camForward = Camera.main.transform.forward;
-            camForward.y = 0;
+            camForward.y = 0f;
             if (camForward.sqrMagnitude > 0.0001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(camForward, Vector3.up);
@@ -92,15 +91,13 @@ public class CharactorController : MonoBehaviour
             return;
         }
 
-        // 获取输入
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
-        // 计算移动方向（基于相机朝向）
         Vector3 cameraForward = Camera.main.transform.forward;
         Vector3 cameraRight = Camera.main.transform.right;
-        cameraForward.y = 0;
-        cameraRight.y = 0;
+        cameraForward.y = 0f;
+        cameraRight.y = 0f;
         cameraForward.Normalize();
         cameraRight.Normalize();
 
@@ -108,58 +105,40 @@ public class CharactorController : MonoBehaviour
         bool isMoving = moveDirection.sqrMagnitude > 0.0001f;
         bool isGrounded = characterController.isGrounded;
 
-        // 重力与跳跃
         if (isGrounded && verticalVelocity < 0f)
-        {
             verticalVelocity = -2f;
-        }
 
         if (isGrounded && Input.GetButtonDown("Jump"))
-        {
             verticalVelocity = Mathf.Sqrt(jumpHeight * -2f * gravity);
-        }
 
-        // 移动时转向
         if (isMoving)
         {
             Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
         }
 
-        // 应用移动
         verticalVelocity += gravity * Time.deltaTime;
         Vector3 motion = moveDirection * moveSpeed;
         motion.y = verticalVelocity;
         characterController.Move(motion * Time.deltaTime);
     }
 
-    // ==================== 攻击逻辑 ====================
     void HandleAttack()
     {
         if (NpcPlacementController.IsActive)
             return;
 
         if (Input.GetMouseButtonUp(1))
-        {
-            isHoldingAttack = false;
-            if (animator != null)
-                animator.speed = 1f;
-        }
+            ResetAttackState(true);
 
         if (!CanEnterCombat)
             return;
 
-        // 按住右键 + 点击左键：攻击
         if (Input.GetMouseButton(1) && Input.GetMouseButtonDown(0))
-        {
             FireProjectile();
-        }
 
-        // 按住右键：播放攻击动画并暂停在蓄力帧
         if (Input.GetMouseButtonDown(1))
-        {
             isHoldingAttack = true;
-        }
     }
 
     void UpdateRmbAirRule()
@@ -177,31 +156,43 @@ public class CharactorController : MonoBehaviour
             rmbReleasedSinceAir = true;
     }
 
-    void HandleAnimation()
+    void ApplyVerticalMotionOnly()
     {
-        if (animator == null) return;
-
-        // 下肢动画
-        int bodyAnimValue;
-        if (!characterController.isGrounded)
-        {
-            bodyAnimValue = JumpAnimValue;
-        }
-        else if (isHoldingAttack && CanEnterCombat)
-        {
-            bodyAnimValue = IdleAnimValue;
-        }
+        if (characterController.isGrounded && verticalVelocity < 0f)
+            verticalVelocity = -2f;
         else
-        {
-            float horizontal = Input.GetAxis("Horizontal");
-            float vertical = Input.GetAxis("Vertical");
-            bool isMoving = Mathf.Abs(horizontal) + Mathf.Abs(vertical) > 0.0001f;
-            bodyAnimValue = isMoving ? MoveAnimValue : IdleAnimValue;
-        }
+            verticalVelocity += gravity * Time.deltaTime;
 
-        animator.SetInteger(AnimParam, bodyAnimValue);
-        bool upperAttack = isHoldingAttack && CanEnterCombat;
-        animator.SetInteger(UpperAnimParam, upperAttack ? UpperAttackAnimValue : 0);
+        characterController.Move(new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
+    }
+
+    void ApplyAnimation(bool forceIdle = false)
+    {
+        if (animator == null)
+            return;
+
+        if (forceIdle)
+            ResetAttackState(true);
+
+        animator.SetInteger(AnimParam, ResolveBodyAnim(forceIdle));
+        bool upperAttack = !forceIdle && isHoldingAttack && CanEnterCombat;
+        animator.SetInteger(UpperAnimParam, upperAttack ? UpperAttackAnim : 0);
+    }
+
+    int ResolveBodyAnim(bool forceIdle)
+    {
+        if (forceIdle)
+            return IdleAnim;
+
+        if (!characterController.isGrounded)
+            return JumpAnim;
+
+        if (isHoldingAttack && CanEnterCombat)
+            return IdleAnim;
+
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        return Mathf.Abs(horizontal) + Mathf.Abs(vertical) > 0.0001f ? MoveAnim : IdleAnim;
     }
 
     void ResetAttackState(bool force = false)
@@ -217,27 +208,27 @@ public class CharactorController : MonoBehaviour
         animator.SetInteger(UpperAnimParam, 0);
     }
 
-    // 动画事件：攻击动作到达蓄力帧时暂停
     public void OnAttackHoldPoint()
     {
         if (isHoldingAttack && CanEnterCombat && animator != null)
-        {
             animator.speed = 0f;
-        }
     }
 
-    // 动画事件：攻击动画播放完毕时重置状态
     public void OnAttackFinished()
     {
-        animator.SetInteger(UpperAnimParam, 0);
+        if (animator != null)
+            animator.SetInteger(UpperAnimParam, 0);
     }
 
     void FireProjectile()
     {
-        if (firePoint == null || projectilePrefabs == null || projectilePrefabs.Length == 0) return;
+        if (firePoint == null || projectilePrefabs == null || projectilePrefabs.Length == 0)
+            return;
+
         if (aimCamera == null)
             aimCamera = Camera.main;
-        if (aimCamera == null) return;
+        if (aimCamera == null)
+            return;
 
         Vector3 spawnPosition = firePoint.transform.position;
         Ray aimRay = aimCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -246,12 +237,11 @@ public class CharactorController : MonoBehaviour
         Vector3 direction = targetPoint - spawnPosition;
         if (direction.sqrMagnitude < 0.0001f)
             direction = aimRay.direction;
-        Quaternion spawnRotation = Quaternion.LookRotation(direction.normalized);
 
         GameObject projectile = Instantiate(
             projectilePrefabs[currentProjectileIndex],
             spawnPosition,
-            spawnRotation) as GameObject;
+            Quaternion.LookRotation(direction.normalized));
 
         if (projectile.TryGetComponent(out ProjectileMover mover))
             mover.targetPoint = targetPoint;

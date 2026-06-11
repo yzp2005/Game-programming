@@ -2,4 +2,19 @@
 public static class SceneTransition
 {
     public static string NextSpawnPointId { get; set; }
+    public static string[] FlagsToAddOnLoadComplete { get; set; }
+    public static string[] FlagsToRemoveOnLoadComplete { get; set; }
+
+    public static void QueueLoadCompleteFlags(string[] flagsToAdd, string[] flagsToRemove)
+    {
+        FlagsToAddOnLoadComplete = flagsToAdd;
+        FlagsToRemoveOnLoadComplete = flagsToRemove;
+    }
+
+    public static void ApplyLoadCompleteFlags()
+    {
+        FlagEventActions.Apply(FlagsToAddOnLoadComplete, FlagsToRemoveOnLoadComplete);
+        FlagsToAddOnLoadComplete = null;
+        FlagsToRemoveOnLoadComplete = null;
+    }
 }

@@ -23,12 +23,15 @@ public class WaveManager : MonoBehaviour
     [SerializeField] bool autoStartOnPlay;
     [SerializeField] bool loopWaves;
     [Min(0f)] [SerializeField] float delayBetweenWaves = 3f;
+    [Tooltip("勾选：本段怪物全部刷出后，等它们都死亡才算结束；不勾选：刷完即结束")]
+    [SerializeField] bool waitUntilAllSpawnedDead = true;
 
     Coroutine waveRoutine;
+    int aliveSpawnedCount;
 
     public bool IsRunning => waveRoutine != null;
 
-    /// <summary>非 Loop 模式下全部波次刷完后触发（被 StopWaves 打断时不触发）。</summary>
+    /// <summary>非 Loop 模式下全部波次结束且（若启用）本段刷出的怪物均已死亡后触发；被 StopWaves 打断时不触发。</summary>
     public event Action WavesFinished;
 
     void Start()
@@ -50,6 +53,7 @@ public class WaveManager : MonoBehaviour
 
         StopCoroutine(waveRoutine);
         waveRoutine = null;
+        aliveSpawnedCount = 0;
     }
 
     IEnumerator RunWaves()
@@ -78,12 +82,15 @@ public class WaveManager : MonoBehaviour
 
                         for (int i = 0; i < entry.count; i++)
                         {
-                            entry.spawner.SpawnOne();
+                            RegisterSpawn(entry.spawner?.SpawnOne());
                             if (i < entry.count - 1 && entry.interval > 0f)
                                 yield return new WaitForSeconds(entry.interval);
                         }
                     }
                 }
+
+                if (waitUntilAllSpawnedDead)
+                    yield return WaitUntilSpawnedDead();
 
                 if (w < waves.Length - 1 && delayBetweenWaves > 0f)
                     yield return new WaitForSeconds(delayBetweenWaves);
@@ -91,6 +98,30 @@ public class WaveManager : MonoBehaviour
         } while (loopWaves);
 
         waveRoutine = null;
+        aliveSpawnedCount = 0;
         WavesFinished?.Invoke();
+    }
+
+    void RegisterSpawn(GameObject monster)
+    {
+        if (!waitUntilAllSpawnedDead || monster == null)
+            return;
+
+        if (!monster.TryGetComponent(out MonsterHealth health) || health.IsDead)
+            return;
+
+        aliveSpawnedCount++;
+        health.OnDeath += OnSpawnedMonsterDeath;
+    }
+
+    void OnSpawnedMonsterDeath()
+    {
+        aliveSpawnedCount = Mathf.Max(0, aliveSpawnedCount - 1);
+    }
+
+    IEnumerator WaitUntilSpawnedDead()
+    {
+        while (aliveSpawnedCount > 0)
+            yield return null;
     }
 }

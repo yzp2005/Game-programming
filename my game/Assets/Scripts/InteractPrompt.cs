@@ -20,15 +20,10 @@ public class InteractPrompt : MonoBehaviour
     [SerializeField] private TextAsset dialogue;
 
     [Header("对话结束后 Flag（可选）")]
-    [Tooltip("对话正常播完后 GameEventManager.Set")]
+    [Tooltip("对话正常播完后 GameEventManager.Set；QuestProgressDisplay 会自动刷新任务 UI")]
     [SerializeField] private string[] flagsToAddOnDialogueFinish;
     [Tooltip("对话正常播完后 GameEventManager.Remove")]
     [SerializeField] private string[] flagsToRemoveOnDialogueFinish;
-
-    [Header("对话结束后任务 UI（留空不更新）")]
-    [SerializeField] private QuestDisplay questDisplay;
-    [SerializeField] private string questNameAfter;
-    [SerializeField] private string questContentAfter;
 
     bool _playerInside;
 
@@ -37,8 +32,6 @@ public class InteractPrompt : MonoBehaviour
         GetComponent<Collider>().isTrigger = true;
         if (dialogueReader == null)
             dialogueReader = FindObjectOfType<DialogueReader>();
-        if (questDisplay == null)
-            questDisplay = FindObjectOfType<QuestDisplay>();
         SetPrompt(false);
         MinimapTrackable.EnsureOn(gameObject, MinimapTrackable.BlipKind.Friendly);
     }
@@ -68,7 +61,7 @@ public class InteractPrompt : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.F) && dialogue != null && dialogueReader != null)
         {
             dialogueReader.StartReading(dialogue);
-            if (NeedsDialogueFinishedHandler() && dialogueReader.IsPlaying)
+            if (HasFlagChangesOnDialogueFinish() && dialogueReader.IsPlaying)
                 dialogueReader.ReadingFinished += OnDialogueFinished;
         }
     }
@@ -91,17 +84,6 @@ public class InteractPrompt : MonoBehaviour
     bool CanInteract()
     {
         return string.IsNullOrEmpty(requiredFlag) || GameEventManager.Has(requiredFlag);
-    }
-
-    bool HasQuestAfterDialogue()
-    {
-        return questDisplay != null
-            && (!string.IsNullOrWhiteSpace(questNameAfter) || !string.IsNullOrWhiteSpace(questContentAfter));
-    }
-
-    bool NeedsDialogueFinishedHandler()
-    {
-        return HasQuestAfterDialogue() || HasFlagChangesOnDialogueFinish();
     }
 
     bool HasFlagChangesOnDialogueFinish()
@@ -128,9 +110,6 @@ public class InteractPrompt : MonoBehaviour
     {
         dialogueReader.ReadingFinished -= OnDialogueFinished;
         ApplyDialogueFinishFlags();
-
-        if (HasQuestAfterDialogue())
-            questDisplay.SetCurrentQuest(questNameAfter, questContentAfter);
     }
 
     void ApplyDialogueFinishFlags()

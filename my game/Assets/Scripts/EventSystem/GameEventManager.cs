@@ -52,6 +52,32 @@ public class GameEventManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>将已有 flag 重命名。新名已存在或旧名不存在时返回 false。</summary>
+    public static bool Rename(string oldTag, string newTag)
+    {
+        if (Instance == null || string.IsNullOrEmpty(oldTag) || string.IsNullOrEmpty(newTag))
+            return false;
+
+        newTag = newTag.Trim();
+        if (string.IsNullOrEmpty(newTag))
+            return false;
+
+        if (oldTag == newTag)
+            return true;
+
+        if (!Instance._flags.Contains(oldTag))
+            return false;
+
+        if (Instance._flags.Contains(newTag))
+            return false;
+
+        Instance._flags.Remove(oldTag);
+        Instance._flags.Add(newTag);
+        FlagRemoved?.Invoke(oldTag);
+        FlagAdded?.Invoke(newTag);
+        return true;
+    }
+
     public static int FlagCount => Instance != null ? Instance._flags.Count : 0;
 
     public static IReadOnlyList<string> GetAllFlagsSorted()

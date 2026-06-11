@@ -51,6 +51,7 @@ public class SceneLoadRunner : MonoBehaviour
             Debug.LogWarning("[SceneLoadRunner] 场景中未放置 SceneLoadRunner，使用同步加载。");
             SceneTransition.NextSpawnPointId = spawnId;
             SceneManager.LoadScene(buildIndex);
+            SceneTransition.ApplyLoadCompleteFlags();
             return;
         }
 
@@ -114,6 +115,7 @@ public class SceneLoadRunner : MonoBehaviour
 
         PlayerInputLock.SetLocked(false);
         _loading = false;
+        SceneTransition.ApplyLoadCompleteFlags();
     }
 
     IEnumerator FadeWhite(float from, float to, float duration)
