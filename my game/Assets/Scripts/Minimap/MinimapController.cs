@@ -43,6 +43,12 @@ public class MinimapController : MonoBehaviour
     [SerializeField] GameObject enemyBlipPrefab;
     [SerializeField] GameObject friendlyBlipPrefab;
 
+    [Header("摆放区域 Blip（NpcPlacementZone 专用）")]
+    [SerializeField] GameObject availableZoneBlipPrefab;
+    [SerializeField] GameObject occupiedZoneBlipPrefab;
+    [SerializeField] Color availableZoneFallbackColor = new Color(0.2f, 0.85f, 1f, 1f);
+    [SerializeField] Color occupiedZoneFallbackColor = new Color(0.55f, 0.55f, 0.55f, 1f);
+
     [Header("图标颜色（未指定 Prefab 颜色时使用）")]
     [SerializeField] Color enemyColor = new Color(1f, 0.25f, 0.25f, 1f);
     [SerializeField] Color objectiveColor = new Color(1f, 0.85f, 0.2f, 1f);
@@ -60,6 +66,8 @@ public class MinimapController : MonoBehaviour
     bool isVisible;
 
     readonly Dictionary<MinimapTrackable, RectTransform> blipByTrackable = new Dictionary<MinimapTrackable, RectTransform>();
+    readonly Dictionary<NpcPlacementZone, RectTransform> blipByPlacementZone = new Dictionary<NpcPlacementZone, RectTransform>();
+    readonly Dictionary<NpcPlacementZone, bool> placementZoneOccupiedState = new Dictionary<NpcPlacementZone, bool>();
 
     [ContextMenu("从 Map Transform 同步 Manual Values")]
     void SyncManualFromMapTransform()
@@ -114,6 +122,7 @@ public class MinimapController : MonoBehaviour
             UpdatePlayerBlip();
 
         SyncTrackableBlips();
+        SyncPlacementZoneBlips();
     }
 
     bool IsTouchHoldingCorner()
@@ -300,6 +309,111 @@ public class MinimapController : MonoBehaviour
 
         foreach (MinimapTrackable trackable in toRemove)
             RemoveBlip(trackable);
+    }
+
+    void SyncPlacementZoneBlips()
+    {
+        if (blipContainer == null)
+            return;
+
+        IReadOnlyList<NpcPlacementZone> zones = NpcPlacementZone.RegisteredZones;
+        for (int i = 0; i < zones.Count; i++)
+        {
+            NpcPlacementZone zone = zones[i];
+            if (zone == null || !zone.ShowMinimapBlip)
+                continue;
+
+            bool occupied = !zone.IsAvailable;
+            if (!blipByPlacementZone.TryGetValue(zone, out RectTransform blip)
+                || !placementZoneOccupiedState.TryGetValue(zone, out bool knownOccupied)
+                || knownOccupied != occupied)
+            {
+                RemovePlacementZoneBlip(zone);
+                if (isVisible)
+                {
+                    blip = CreatePlacementZoneBlip(zone, occupied);
+                    blipByPlacementZone[zone] = blip;
+                    placementZoneOccupiedState[zone] = occupied;
+                }
+            }
+
+            if (isVisible && blipByPlacementZone.TryGetValue(zone, out blip) && blip != null)
+                blip.anchoredPosition = WorldToBlipLocal(zone.MinimapWorldPosition);
+        }
+
+        var toRemove = new List<NpcPlacementZone>();
+        foreach (KeyValuePair<NpcPlacementZone, RectTransform> pair in blipByPlacementZone)
+        {
+            NpcPlacementZone zone = pair.Key;
+            if (zone == null || !zone.isActiveAndEnabled || !zone.ShowMinimapBlip)
+            {
+                if (pair.Value != null)
+                    Destroy(pair.Value.gameObject);
+                toRemove.Add(zone);
+                continue;
+            }
+
+            bool stillRegistered = false;
+            for (int i = 0; i < zones.Count; i++)
+            {
+                if (zones[i] == zone)
+                {
+                    stillRegistered = true;
+                    break;
+                }
+            }
+
+            if (!stillRegistered)
+                toRemove.Add(zone);
+        }
+
+        foreach (NpcPlacementZone zone in toRemove)
+            RemovePlacementZoneBlip(zone);
+    }
+
+    void RemovePlacementZoneBlip(NpcPlacementZone zone)
+    {
+        if (zone != null && blipByPlacementZone.TryGetValue(zone, out RectTransform blip))
+        {
+            if (blip != null)
+                Destroy(blip.gameObject);
+            blipByPlacementZone.Remove(zone);
+            placementZoneOccupiedState.Remove(zone);
+        }
+    }
+
+    RectTransform CreatePlacementZoneBlip(NpcPlacementZone zone, bool occupied)
+    {
+        GameObject prefab = occupied
+            ? zone.ResolveOccupiedBlipPrefab(occupiedZoneBlipPrefab)
+            : zone.ResolveAvailableBlipPrefab(availableZoneBlipPrefab);
+
+        Color fallbackColor = occupied ? occupiedZoneFallbackColor : availableZoneFallbackColor;
+        string label = occupied ? "OccupiedZoneBlip" : "AvailableZoneBlip";
+
+        GameObject go;
+        if (prefab != null)
+        {
+            go = Instantiate(prefab, blipContainer);
+        }
+        else
+        {
+            go = new GameObject(label, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(blipContainer, false);
+            Image image = go.GetComponent<Image>();
+            image.color = fallbackColor;
+            image.raycastTarget = false;
+            EnsureBlipSprite(image);
+        }
+
+        RectTransform rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        if (rt.sizeDelta == Vector2.zero)
+            rt.sizeDelta = defaultBlipSize;
+
+        rt.SetAsLastSibling();
+        return rt;
     }
 
     MinimapWorldTracker ResolveTracker()

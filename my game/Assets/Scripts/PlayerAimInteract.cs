@@ -43,7 +43,7 @@ public class PlayerAimInteract : MonoBehaviour
         if (TryGetDoor(out Door door))
         {
             ShowPrompt(door.doorOpen ? closePrompt : openPrompt);
-            if (Input.GetKeyDown(interactKey) && !NpcPlacementController.HasAvailablePrefab)
+            if (FightLevelInputGate.GetKeyDown(interactKey) && !NpcPlacementController.HasAvailablePrefab)
                 door.PlayDoorAnimation();
             return;
         }

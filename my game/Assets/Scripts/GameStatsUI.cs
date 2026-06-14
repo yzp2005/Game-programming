@@ -104,6 +104,14 @@ public class GameStatsUI : MonoBehaviour
         return true;
     }
 
+    public void RefundNpcPlacement(int chocolateCost)
+    {
+        chocolateCost = Mathf.Max(0, chocolateCost);
+        chocolateRemaining += chocolateCost;
+        placedPopulation = Mathf.Max(0, placedPopulation - 1);
+        RefreshUI();
+    }
+
     void HandleDeath(MonsterHealth health)
     {
         if (health == null)

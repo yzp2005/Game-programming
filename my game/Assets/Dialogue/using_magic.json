@@ -1,0 +1,53 @@
+{
+    "id": "lily_introduces_skills",
+    "title": "Before the Second Wave",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "Rover, what you used in the last battle... was that magic?"
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "You could call it that."
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "I've never seen real magic before."
+    },
+    {
+    "id": "line_004",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "If another monster wave comes, maybe you could show us a few more tricks."
+    },
+    {
+    "id": "line_005",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "A few more tricks?"
+    },
+    {
+    "id": "line_006",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "For morale."
+    },
+    {
+    "id": "line_007",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "chuckles I'll see what I can do."
+    }
+    ]
+    }

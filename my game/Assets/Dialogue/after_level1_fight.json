@@ -1,0 +1,67 @@
+{
+    "id": "rover_after_first_wave",
+    "title": "After the First Wave",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "The first wave is over..."
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "For now, at least."
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 2,
+    "text": "Those monsters weren't wandering randomly. Something was driving them."
+    },
+    {
+    "id": "line_004",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 2,
+    "text": "And if I'm right, this won't be the last attack."
+    },
+    {
+    "id": "line_005",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 3,
+    "text": "The mana fluctuation is still there... weaker than before, but not gone."
+    },
+    {
+    "id": "line_006",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "Lily mentioned the Dawncore."
+    },
+    {
+    "id": "line_007",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 2,
+    "text": "If anyone knows what's happening around this mountain, she might."
+    },
+    {
+    "id": "line_008",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "I should head back and talk to her before things get worse."
+    }
+    ]
+    }

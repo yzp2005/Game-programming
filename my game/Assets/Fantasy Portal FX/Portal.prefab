@@ -32,8 +32,166 @@ Transform:
   - {fileID: 4843950128686978336}
   - {fileID: 8451028494717289250}
   - {fileID: 8108340114688669561}
+  - {fileID: 3857401530900915040}
+  - {fileID: 8539907173276463444}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6762925633094200200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3857401530900915040}
+  - component: {fileID: 5575285063347743985}
+  - component: {fileID: 3381213528952841172}
+  m_Layer: 0
+  m_Name: PortalEvent
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3857401530900915040
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6762925633094200200}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.746, y: -0.313, z: -1.327}
+  m_LocalScale: {x: 1, y: 1, z: 0.19296}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4817902075279245678}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5575285063347743985
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6762925633094200200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eb02db3ad4d7be24689248df8902753e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  entries:
+  - requiredFlags:
+    - phase2_level1
+    - enterenabled
+    promptMessage: Teleport[F]
+    lockedPromptMessage: Did you forget sth QAQ
+    targetSceneBuildIndex: 1
+    targetSpawnId: FromVillage
+    flagsToAddOnTeleport:
+    - phase3_level1
+    flagsToRemoveOnTeleport:
+    - enterenabled
+    - phase2_level1
+  - requiredFlags:
+    - phase2_level2
+    - enterenabled
+    promptMessage: Teleport[F]
+    lockedPromptMessage: Did you forget sth QAQ
+    targetSceneBuildIndex: 1
+    targetSpawnId: FromVillage
+    flagsToAddOnTeleport:
+    - phase3_level2
+    flagsToRemoveOnTeleport:
+    - enterenabled
+    - phase2_level2
+  promptRoot: {fileID: 0}
+  promptText: {fileID: 0}
+  activeEntryFlags: 
+  _inside: 0
+  playerInputLocked: 0
+--- !u!136 &3381213528952841172
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6762925633094200200}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 3.5
+  m_Height: 3.1168923
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &8084658001601677005
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8539907173276463444}
+  - component: {fileID: 462000480990408275}
+  - component: {fileID: 3699465405193899392}
+  m_Layer: 0
+  m_Name: spawn
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8539907173276463444
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8084658001601677005}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.17, y: -0.58, z: -0.21}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4817902075279245678}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &462000480990408275
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8084658001601677005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d34cbba359b4fb24eaa7214f0594b822, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnId: init
+--- !u!114 &3699465405193899392
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8084658001601677005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 415af07e7f5fa5348846478bc361c689, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &588092799325554542
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -163,8 +321,37 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 1959862603176640885, guid: 42a555ad5706944419c12d949b286466, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7488924259497911814}
   m_SourcePrefab: {fileID: 100100000, guid: 42a555ad5706944419c12d949b286466, type: 3}
+--- !u!1 &5483564002584272081 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1959862603176640885, guid: 42a555ad5706944419c12d949b286466, type: 3}
+  m_PrefabInstance: {fileID: 6281216151100661156}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &7488924259497911814
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5483564002584272081}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.2157617, y: 2.729478, z: 0.5768402}
+  m_Center: {x: -0.054540996, y: -0.045738697, z: -0.05450023}
 --- !u!4 &8108340114688669561 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2859153066343295709, guid: 42a555ad5706944419c12d949b286466, type: 3}

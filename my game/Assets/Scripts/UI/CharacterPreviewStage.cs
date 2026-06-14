@@ -87,7 +87,7 @@ public class CharacterPreviewStage : MonoBehaviour
         if (!CanAcceptInput())
             return;
 
-        if (Input.GetKeyDown(nextCharacterKey))
+        if (FightLevelInputGate.GetKeyDown(nextCharacterKey))
             ShowNextCharacter();
     }
 

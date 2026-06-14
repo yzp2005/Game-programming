@@ -6182,6 +6182,7 @@ GameObject:
   - component: {fileID: 5555606807100644386}
   - component: {fileID: 865035114843281901}
   - component: {fileID: 6898160095244703505}
+  - component: {fileID: 8912345678901234567}
   m_Layer: 0
   m_Name: Riko
   m_TagString: Player
@@ -6280,6 +6281,18 @@ MonoBehaviour:
   projectilePrefabs:
   - {fileID: 1019054629656254, guid: 0dd71cf1c4378844fae81b273f0ba817, type: 3}
   currentProjectileIndex: 0
+--- !u!114 &8912345678901234567
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7161033464942210412}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c4e9a2b1d8f4036a5e2c9b0f1d3e7a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &6898160095244703505
 MonoBehaviour:
   m_ObjectHideFlags: 0

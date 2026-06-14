@@ -14,6 +14,10 @@ public class NpcPlacementController : MonoBehaviour
     [SerializeField] int placeMouseButton = 0;
     [SerializeField] CharacterPreviewStage previewStage;
 
+    [Header("玩家")]
+    [Tooltip("留空则自动查找 PlayerCrossScene 保留的玩家")]
+    [SerializeField] Transform playerRoot;
+
     [Header("检测")]
     [SerializeField] Camera playerCamera;
     [SerializeField] float maxRayDistance = 80f;
@@ -27,6 +31,10 @@ public class NpcPlacementController : MonoBehaviour
     [SerializeField] float minDistanceFromPlayer = 2.5f;
     [SerializeField] float minScreenPointerDistance = 80f;
 
+    [Header("摆放区域")]
+    [Tooltip("开启后，预览必须位于空闲的 NpcPlacementZone 内才能放置")]
+    [SerializeField] bool requireDesignatedZones = true;
+
     [Header("预览材质")]
     [SerializeField] Material validPreviewMaterial;
     [SerializeField] Material invalidPreviewMaterial;
@@ -34,6 +42,7 @@ public class NpcPlacementController : MonoBehaviour
     [SerializeField] string previewLayerName = "Default";
 
     GameObject previewInstance;
+    NpcPlacementZone currentPreviewZone;
     GameObject displayPrefab;
     GameObject placementPrefab;
     float referenceGroundY;
@@ -57,16 +66,24 @@ public class NpcPlacementController : MonoBehaviour
     void Update()
     {
         EnsureRefs();
+        FightLevelInputGate.EnsureSubscribed();
 
-        HasAvailablePrefab = registry != null
+        HasAvailablePrefab = FightLevelInputGate.IsInFightLevel
+            && registry != null
             && previewStage != null
             && registry.CanPlace(previewStage.CurrentDisplayIndex)
             && CanAffordCurrentSlot();
 
-        if (PlayerInputLock.IsLocked)
+        if (PlayerInputLock.IsLocked || PlayerTransform == null)
             return;
 
-        if (Input.GetKeyDown(toggleKey))
+        if (IsActive && !FightLevelInputGate.IsInFightLevel)
+        {
+            ExitPlacementMode();
+            return;
+        }
+
+        if (FightLevelInputGate.GetKeyDown(toggleKey))
         {
             if (IsActive)
                 ExitPlacementMode();
@@ -80,7 +97,7 @@ public class NpcPlacementController : MonoBehaviour
 
         UpdatePreviewTransform();
 
-        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI() && CanAffordCurrentSlot())
+        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI() && IsPreviewPlacementValid())
             PlacePreview();
     }
 
@@ -90,8 +107,19 @@ public class NpcPlacementController : MonoBehaviour
             ExitPlacementMode();
     }
 
+    Transform PlayerTransform
+    {
+        get
+        {
+            EnsurePlayerRoot();
+            return playerRoot;
+        }
+    }
+
     void EnsureRefs()
     {
+        EnsurePlayerRoot();
+
         if (previewStage == null)
             previewStage = FindObjectOfType<CharacterPreviewStage>(true);
 
@@ -102,6 +130,22 @@ public class NpcPlacementController : MonoBehaviour
             registry = previewStage.Registry;
         else
             registry = FindObjectOfType<NpcCharacterRegistry>(true);
+    }
+
+    void EnsurePlayerRoot()
+    {
+        if (playerRoot != null)
+            return;
+
+        if (PlayerCrossScene.TryGetPersistedPlayer(out GameObject persisted))
+        {
+            playerRoot = persisted.transform;
+            return;
+        }
+
+        GameObject tagged = GameObject.FindGameObjectWithTag("Player");
+        if (tagged != null)
+            playerRoot = tagged.transform;
     }
 
     public void EnterPlacementMode()
@@ -133,15 +177,18 @@ public class NpcPlacementController : MonoBehaviour
             Debug.LogWarning($"{name}: Valid Preview Material 未设置，幽灵可能没有半透明白色效果。", this);
 
         IsActive = true;
-        referenceGroundY = transform.position.y;
+        referenceGroundY = PlayerTransform.position.y;
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+        NpcPlacementZone.RefreshPlacementModeVisuals(true);
         SpawnPreview();
     }
 
     public void ExitPlacementMode()
     {
         IsActive = false;
+        currentPreviewZone = null;
+        NpcPlacementZone.RefreshPlacementModeVisuals(false);
         DestroyPreview();
 
         if (!PlayerInputLock.IsLocked)
@@ -187,12 +234,19 @@ public class NpcPlacementController : MonoBehaviour
         if (previewInstance == null || placementPrefab == null || previewStage == null || registry == null)
             return;
 
+        if (!IsPreviewPlacementValid())
+            return;
+
         int cost = registry.GetChocolateCost(previewStage.CurrentDisplayIndex);
         if (GameStatsUI.Instance != null && !GameStatsUI.Instance.TryPlaceNpc(cost))
             return;
 
         Vector3 position = previewInstance.transform.position;
         Quaternion rotation = previewInstance.transform.rotation;
+        NpcPlacementZone zone = currentPreviewZone;
+
+        if (zone != null)
+            zone.TryGetPlacementPose(position, rotation, out position, out rotation);
 
         DestroyPreview();
 
@@ -200,6 +254,17 @@ public class NpcPlacementController : MonoBehaviour
         placed.name = placementPrefab.name;
         MinimapTrackable.EnsureOn(placed, MinimapTrackable.BlipKind.Friendly);
 
+        if (zone != null && !zone.TryOccupy(placed))
+        {
+            Destroy(placed);
+            if (GameStatsUI.Instance != null)
+                GameStatsUI.Instance.RefundNpcPlacement(cost);
+            NpcPlacementZone.RefreshPlacementModeVisuals(true);
+            SpawnPreview();
+            return;
+        }
+
+        NpcPlacementZone.RefreshPlacementModeVisuals(true);
         SpawnPreview();
     }
 
@@ -219,6 +284,49 @@ public class NpcPlacementController : MonoBehaviour
             return true;
 
         return GameStatsUI.Instance.CanAfford(registry.GetChocolateCost(previewStage.CurrentDisplayIndex));
+    }
+
+    bool IsPreviewPlacementValid()
+    {
+        if (!CanAffordCurrentSlot())
+            return false;
+
+        if (!requireDesignatedZones)
+            return true;
+
+        return currentPreviewZone != null && currentPreviewZone.IsAvailable;
+    }
+
+    NpcPlacementZone ResolveZoneAt(Vector3 worldPoint)
+    {
+        Collider[] hits = Physics.OverlapSphere(
+            worldPoint,
+            placementRadius,
+            ~0,
+            QueryTriggerInteraction.Collide);
+
+        NpcPlacementZone best = null;
+        float bestDistance = float.MaxValue;
+
+        foreach (Collider hit in hits)
+        {
+            if (hit == null)
+                continue;
+
+            NpcPlacementZone zone = hit.GetComponent<NpcPlacementZone>()
+                ?? hit.GetComponentInParent<NpcPlacementZone>();
+            if (zone == null || !zone.ContainsPoint(worldPoint))
+                continue;
+
+            float distance = Vector3.SqrMagnitude(hit.ClosestPoint(worldPoint) - worldPoint);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = zone;
+            }
+        }
+
+        return best;
     }
 
     void CachePreviewMaterials()
@@ -325,7 +433,9 @@ public class NpcPlacementController : MonoBehaviour
         else
             previewInstance.transform.position = GetFallbackPreviewPosition();
 
-        bool canPlace = CanAffordCurrentSlot();
+        currentPreviewZone = requireDesignatedZones ? ResolveZoneAt(previewInstance.transform.position) : null;
+
+        bool canPlace = IsPreviewPlacementValid();
         if (canPlace != lastPreviewValid)
         {
             lastPreviewValid = canPlace;
@@ -335,12 +445,14 @@ public class NpcPlacementController : MonoBehaviour
 
     Vector3 GetFallbackPreviewPosition()
     {
-        Vector3 forward = transform.forward;
+        Transform player = PlayerTransform;
+        Vector3 forward = player != null ? player.forward : Vector3.forward;
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.0001f)
             forward = Vector3.forward;
 
-        Vector3 point = transform.position + forward.normalized * minDistanceFromPlayer;
+        Vector3 origin = player != null ? player.position : transform.position;
+        Vector3 point = origin + forward.normalized * minDistanceFromPlayer;
         point.y = referenceGroundY;
         return SnapToGround(point);
     }
@@ -357,7 +469,7 @@ public class NpcPlacementController : MonoBehaviour
         Ray mouseRay = playerCamera.ScreenPointToRay(Input.mousePosition);
 
         if (!TryGetRayGroundPoint(crosshairRay, out Vector3 crosshairPoint))
-            crosshairPoint = transform.position;
+            crosshairPoint = PlayerTransform != null ? PlayerTransform.position : transform.position;
 
         if (!TryGetRayGroundPoint(mouseRay, out Vector3 mousePoint))
             mousePoint = crosshairPoint;
@@ -371,7 +483,7 @@ public class NpcPlacementController : MonoBehaviour
         faceDir.y = 0f;
         rotation = faceDir.sqrMagnitude > 0.0001f
             ? Quaternion.LookRotation(faceDir.normalized, Vector3.up)
-            : transform.rotation;
+            : PlayerTransform != null ? PlayerTransform.rotation : Quaternion.identity;
 
         return true;
     }
@@ -444,26 +556,31 @@ public class NpcPlacementController : MonoBehaviour
             direction = playerCamera.transform.forward;
 
         direction.Normalize();
-        Vector3 point = transform.position + direction * minDistanceFromPlayer;
+        Vector3 origin = PlayerTransform != null ? PlayerTransform.position : transform.position;
+        Vector3 point = origin + direction * minDistanceFromPlayer;
         point.y = referenceGroundY;
         return point;
     }
 
     Vector3 EnforceMinDistanceFromPlayer(Vector3 position)
     {
-        Vector3 offset = position - transform.position;
+        if (PlayerTransform == null)
+            return position;
+
+        Vector3 playerPosition = PlayerTransform.position;
+        Vector3 offset = position - playerPosition;
         offset.y = 0f;
 
         if (offset.sqrMagnitude >= minDistanceFromPlayer * minDistanceFromPlayer)
             return position;
 
         if (offset.sqrMagnitude < 0.0001f)
-            offset = GetMinDistancePointFromMouseDirection() - transform.position;
+            offset = GetMinDistancePointFromMouseDirection() - playerPosition;
 
         offset.y = 0f;
         offset = offset.normalized * minDistanceFromPlayer;
-        position.x = transform.position.x + offset.x;
-        position.z = transform.position.z + offset.z;
+        position.x = playerPosition.x + offset.x;
+        position.z = playerPosition.z + offset.z;
         return SnapToGround(position);
     }
 
@@ -473,7 +590,8 @@ public class NpcPlacementController : MonoBehaviour
             return true;
 
         Transform hitTransform = collider.transform;
-        if (hitTransform == transform || hitTransform.IsChildOf(transform))
+        if (PlayerTransform != null
+            && (hitTransform == PlayerTransform || hitTransform.IsChildOf(PlayerTransform)))
             return true;
 
         if (previewInstance != null

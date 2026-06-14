@@ -34,6 +34,15 @@ public static class PlayerInputLock
             OnLockChanged?.Invoke(IsLocked);
     }
 
+    /// <summary>场景加载结束后强制恢复玩法输入（仅当当前仍被锁定时）。</summary>
+    public static void ForceUnlockGameplay()
+    {
+        if (!IsLocked)
+            return;
+
+        SetLocked(false);
+    }
+
     public static void ApplyDialogueCursor()
     {
         Cursor.visible = true;

@@ -4,15 +4,21 @@ using TMPro;
 using UnityEngine;
 
 /// <summary>
-/// 黑幕旁白：一句句依次淡入、停留、淡出。文案写在 Lines 或 Content（按行拆分）。
-/// 挂在居中 TMP 物体上即可，不需要 ScrollViewport。
+/// 黑幕旁白。优先使用 bg_audio.json + 一条完整配音（按 segments 时间轴显示字幕）；
+/// 未配置时回退到 Lines / Content 手动逐句淡入淡出。
 /// </summary>
 public class IntroNarrationLines : MonoBehaviour
 {
     [Header("引用")]
     [SerializeField] private TMP_Text subtitleText;
 
-    [Header("文案")]
+    [Header("配音 + 时间轴（bg_audio.json）")]
+    [Tooltip("例如 Assets/Dialogue/bg_audio/bg_audio.json")]
+    [SerializeField] private TextAsset timedNarrationJson;
+    [SerializeField] private AudioClip narrationAudio;
+    [SerializeField] private AudioSource audioSource;
+
+    [Header("文案（无 JSON 时使用）")]
     [Tooltip("一行一句，优先级高于 Content")]
     [SerializeField] private string[] lines;
     [TextArea(6, 16)]
@@ -44,6 +50,7 @@ public class IntroNarrationLines : MonoBehaviour
     private bool pendingSkipToLastLine;
     private Color textBaseColor;
     private CanvasGroup lastLineIconCanvasGroup;
+    private BgAudioData timedData;
 
     public bool IsFinished { get; private set; }
     public bool IsPlaying => isPlaying;
@@ -62,6 +69,8 @@ public class IntroNarrationLines : MonoBehaviour
             lastLineIconCanvasGroup = lastLineIcon.GetComponent<CanvasGroup>();
             lastLineIcon.SetActive(false);
         }
+
+        EnsureAudioSource();
     }
 
     void Start()
@@ -127,6 +136,12 @@ public class IntroNarrationLines : MonoBehaviour
 
     IEnumerator PlayRoutine()
     {
+        if (TryLoadTimedData(out BgAudioData data))
+        {
+            yield return PlayTimedRoutine(data);
+            yield break;
+        }
+
         isPlaying = true;
         IsFinished = false;
 
@@ -168,6 +183,12 @@ public class IntroNarrationLines : MonoBehaviour
 
     IEnumerator SkipToLastLineRoutine()
     {
+        if (TryLoadTimedData(out BgAudioData data))
+        {
+            yield return SkipToLastLineTimedRoutine(data);
+            yield break;
+        }
+
         isPlaying = true;
         IsFinished = false;
         subtitleText.gameObject.SetActive(true);
@@ -204,8 +225,163 @@ public class IntroNarrationLines : MonoBehaviour
         Cleanup();
     }
 
+    bool TryLoadTimedData(out BgAudioData data)
+    {
+        if (timedData != null)
+        {
+            data = timedData;
+            return true;
+        }
+
+        data = null;
+        if (timedNarrationJson == null || narrationAudio == null)
+            return false;
+
+        data = JsonUtility.FromJson<BgAudioData>(timedNarrationJson.text);
+        if (data?.segments == null || data.segments.Length == 0)
+        {
+            Debug.LogWarning("[IntroNarrationLines] timedNarrationJson 解析失败或 segments 为空。", this);
+            data = null;
+            return false;
+        }
+
+        timedData = data;
+        return true;
+    }
+
+    IEnumerator PlayTimedRoutine(BgAudioData data)
+    {
+        isPlaying = true;
+        IsFinished = false;
+        subtitleText.gameObject.SetActive(true);
+        SetTextAlpha(0f);
+
+        BgAudioSegment[] segments = data.segments;
+        float endTime = segments[segments.Length - 1].end;
+
+        EnsureAudioSource();
+        audioSource.clip = narrationAudio;
+        audioSource.time = 0f;
+        audioSource.Play();
+
+        int currentSegment = -1;
+        bool lastIconShown = false;
+        bool subtitleVisible = false;
+
+        while (isPlaying)
+        {
+            float t = audioSource.time;
+            if (!audioSource.isPlaying && t >= endTime - 0.02f)
+                break;
+
+            int segIdx = FindSegmentIndex(segments, t);
+            if (segIdx != currentSegment)
+            {
+                if (subtitleVisible)
+                {
+                    yield return FadeAlpha(subtitleText.color.a, 0f, fadeOutDuration);
+                    subtitleVisible = false;
+                }
+
+                if (segIdx >= 0)
+                {
+                    bool isLast = segIdx == segments.Length - 1;
+                    if (isLast && !lastIconShown)
+                    {
+                        yield return ShowLastLineIcon();
+                        lastIconShown = true;
+                    }
+
+                    subtitleText.text = segments[segIdx].text;
+                    yield return FadeAlpha(0f, 1f, fadeInDuration);
+                    subtitleVisible = true;
+                }
+
+                currentSegment = segIdx;
+            }
+
+            if (t >= endTime)
+                break;
+
+            yield return null;
+        }
+
+        if (subtitleVisible)
+            yield return FadeAlpha(subtitleText.color.a, 0f, fadeOutDuration);
+
+        if (lastIconShown)
+            yield return HideLastLineIcon();
+
+        Cleanup();
+    }
+
+    IEnumerator SkipToLastLineTimedRoutine(BgAudioData data)
+    {
+        isPlaying = true;
+        IsFinished = false;
+        subtitleText.gameObject.SetActive(true);
+
+        BgAudioSegment[] segments = data.segments;
+        BgAudioSegment last = segments[segments.Length - 1];
+
+        EnsureAudioSource();
+        if (audioSource.clip != narrationAudio)
+            audioSource.clip = narrationAudio;
+
+        float currentAlpha = subtitleText.color.a;
+        if (currentAlpha > 0.01f)
+            yield return FadeAlpha(currentAlpha, 0f, skipCrossfadeOutDuration);
+        else
+            SetTextAlpha(0f);
+
+        if (lastLineIcon != null && lastLineIcon.activeSelf)
+            yield return HideLastLineIcon();
+
+        audioSource.time = last.start;
+        if (!audioSource.isPlaying)
+            audioSource.Play();
+
+        yield return ShowLastLineIcon();
+        subtitleText.text = last.text;
+        yield return FadeAlpha(0f, 1f, skipCrossfadeInDuration);
+
+        while (audioSource.isPlaying && audioSource.time < last.end)
+            yield return null;
+
+        yield return FadeAlpha(1f, 0f, fadeOutDuration);
+        yield return HideLastLineIcon();
+        Cleanup();
+    }
+
+    static int FindSegmentIndex(BgAudioSegment[] segments, float time)
+    {
+        for (int i = 0; i < segments.Length; i++)
+        {
+            if (time >= segments[i].start && time < segments[i].end)
+                return i;
+        }
+
+        if (segments.Length > 0 && time >= segments[segments.Length - 1].start)
+            return segments.Length - 1;
+
+        return -1;
+    }
+
+    void EnsureAudioSource()
+    {
+        if (audioSource != null)
+            return;
+
+        audioSource = GetComponent<AudioSource>();
+        if (audioSource == null)
+            audioSource = gameObject.AddComponent<AudioSource>();
+    }
+
     void Cleanup()
     {
+        if (audioSource != null && audioSource.isPlaying)
+            audioSource.Stop();
+
         subtitleText.text = string.Empty;
         SetTextAlpha(0f);
 

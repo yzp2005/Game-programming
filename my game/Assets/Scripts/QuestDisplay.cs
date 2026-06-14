@@ -10,33 +10,55 @@ public class QuestDisplay : MonoBehaviour
     [Tooltip("内容行在标题下方的 Y 偏移（anchoredPosition）")]
     [SerializeField] private float contentOffsetY = -40f;
 
+    [Header("任务更新特效")]
+    [SerializeField] private UIPanelExpandFadeEffect questUpdateEffect;
+
+    string lastQuestName = "";
+    string lastQuestContent = "";
+
     void Awake()
     {
         if (panelRoot == null)
             panelRoot = gameObject;
 
-        SetCurrentQuest("", "");
+        SetCurrentQuest("", "", false);
     }
 
     public void SetCurrentQuest(string questName, string questContent)
     {
+        SetCurrentQuest(questName, questContent, true);
+    }
+
+    void SetCurrentQuest(string questName, string questContent, bool playUpdateEffect)
+    {
+        questName ??= "";
+        questContent ??= "";
+
+        bool changed = questName != lastQuestName || questContent != lastQuestContent;
+        bool show = !string.IsNullOrWhiteSpace(questName) || !string.IsNullOrWhiteSpace(questContent);
+
         if (questNameText != null)
         {
             EnsureActive(questNameText.transform);
-            questNameText.text = questName ?? "";
+            questNameText.text = questName;
         }
 
         if (questContentText != null)
         {
             EnsureActive(questContentText.transform);
-            questContentText.text = questContent ?? "";
+            questContentText.text = questContent;
 
             if (questNameText != null)
                 FixContentLayoutIfOffScreen();
         }
 
-        bool show = !string.IsNullOrWhiteSpace(questName) || !string.IsNullOrWhiteSpace(questContent);
         panelRoot.SetActive(show);
+
+        if (playUpdateEffect && show && changed && questUpdateEffect != null)
+            questUpdateEffect.Play();
+
+        lastQuestName = questName;
+        lastQuestContent = questContent;
     }
 
     /// <summary>Contenttext 若坐标离标题太远（如 722,411），会移到标题下方。</summary>

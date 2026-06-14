@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -36,15 +37,25 @@ public class SkillPrepPanel : MonoBehaviour
     [Tooltip("留空则关闭本物体（Preparation System）")]
     [SerializeField] GameObject panelRoot;
     [SerializeField] Button closePanelButton;
+    [Tooltip("勾选后必须选满所有技能槽才能关闭")]
+    [SerializeField] bool requireFullLoadoutToClose = true;
+    [SerializeField] TMP_Text closeHintText;
+    [SerializeField] string closeHintWhenIncomplete = "请选满所有技能后再关闭";
 
     [Header("清空")]
     [SerializeField] Button clearLoadoutButton;
 
     SkillDefinition pendingSkill;
 
+    public event Action PanelOpened;
+    public event Action PanelClosed;
+
+    GameObject PanelRootObject => panelRoot != null ? panelRoot : gameObject;
+
     void Awake()
     {
         SkillLoadout.Configure(loadoutIconSlots != null ? loadoutIconSlots.Length : 3);
+        SkillLoadout.Changed += OnLoadoutChanged;
 
         if (selectSkillButton != null)
             selectSkillButton.onClick.AddListener(OnSelectSkillClicked);
@@ -56,11 +67,12 @@ public class SkillPrepPanel : MonoBehaviour
             clearLoadoutButton.onClick.AddListener(OnClearLoadoutClicked);
 
         if (closePanelButton != null)
-            closePanelButton.onClick.AddListener(ClosePanel);
+            closePanelButton.onClick.AddListener(OnClosePanelClicked);
 
         BuildList();
         HideDetail();
         RefreshLoadoutBar();
+        RefreshClosePanelButton();
     }
 
     void Start()
@@ -71,6 +83,8 @@ public class SkillPrepPanel : MonoBehaviour
 
     void OnDestroy()
     {
+        SkillLoadout.Changed -= OnLoadoutChanged;
+
         if (selectSkillButton != null)
             selectSkillButton.onClick.RemoveListener(OnSelectSkillClicked);
 
@@ -81,21 +95,46 @@ public class SkillPrepPanel : MonoBehaviour
             clearLoadoutButton.onClick.RemoveListener(OnClearLoadoutClicked);
 
         if (closePanelButton != null)
-            closePanelButton.onClick.RemoveListener(ClosePanel);
+            closePanelButton.onClick.RemoveListener(OnClosePanelClicked);
+    }
+
+    void OnLoadoutChanged()
+    {
+        RefreshLoadoutBar();
+        RefreshSelectButton();
+        RefreshClosePanelButton();
     }
 
     public void OpenPanel()
     {
-        GameObject root = panelRoot != null ? panelRoot : gameObject;
-        root.SetActive(true);
+        PanelRootObject.SetActive(true);
+        RefreshClosePanelButton();
+        PanelOpened?.Invoke();
     }
+
+    public bool TryClosePanel()
+    {
+        if (requireFullLoadoutToClose && !SkillLoadout.IsFull)
+            return false;
+
+        ClosePanel();
+        return true;
+    }
+
+    void OnClosePanelClicked() => TryClosePanel();
 
     public void ClosePanel()
     {
         HideDetail();
 
-        GameObject root = panelRoot != null ? panelRoot : gameObject;
-        root.SetActive(false);
+        PanelRootObject.SetActive(false);
+        PanelClosed?.Invoke();
+    }
+
+    public void EnsureHidden()
+    {
+        HideDetail();
+        PanelRootObject.SetActive(false);
     }
 
     void BuildList()
@@ -166,17 +205,13 @@ public class SkillPrepPanel : MonoBehaviour
         if (pendingSkill == null)
             return;
 
-        if (SkillLoadout.TryAdd(pendingSkill.skillId))
-            RefreshLoadoutBar();
-
-        RefreshSelectButton();
+        if (!SkillLoadout.TryAdd(pendingSkill.skillId))
+            RefreshSelectButton();
     }
 
     void OnClearLoadoutClicked()
     {
         SkillLoadout.Clear();
-        RefreshLoadoutBar();
-        RefreshSelectButton();
     }
 
     void RefreshLoadoutBar()
@@ -198,6 +233,17 @@ public class SkillPrepPanel : MonoBehaviour
             else
                 SkillIconDisplay.Clear(container);
         }
+    }
+
+    void RefreshClosePanelButton()
+    {
+        bool canClose = !requireFullLoadoutToClose || SkillLoadout.IsFull;
+
+        if (closePanelButton != null)
+            closePanelButton.interactable = canClose;
+
+        if (closeHintText != null)
+            closeHintText.text = canClose ? string.Empty : closeHintWhenIncomplete;
     }
 
     void RefreshSelectButton()

@@ -6,8 +6,8 @@ using UnityEngine;
 public class PlayerInputLockController : MonoBehaviour
 {
     [Header("进入场景")]
-    [Tooltip("勾选后一进场就锁定（模拟开场对话）。")]
-    [SerializeField] private bool lockOnStart = true;
+    [Tooltip("勾选后一进场就锁定（测试用，正式流程请关闭）")]
+    [SerializeField] private bool lockOnStart;
 
     [Header("运行时快捷键")]
     [Tooltip("运行时按切换键在锁定/解锁之间切换，方便对比效果。")]

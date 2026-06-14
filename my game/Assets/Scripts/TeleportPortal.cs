@@ -1,35 +1,36 @@
+using System;
 using TMPro;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class TeleportPortal : MonoBehaviour
 {
-    [SerializeField] private GameObject promptRoot;
-    [SerializeField] private TMP_Text promptText;
-    [SerializeField] private string promptMessage = "Teleport [F]";
+    [Serializable]
+    public class Entry
+    {
+        [Tooltip("全部存在时使用本条目；留空表示默认条目（兜底）")]
+        public string[] requiredFlags;
+        public string promptMessage = "Teleport [F]";
+        [Tooltip("条件未满足时显示；留空则不显示")]
+        public string lockedPromptMessage;
+        [Tooltip("Build Settings 里 Scenes In Build 序号，从 0 开始")]
+        public int targetSceneBuildIndex = 1;
+        [Tooltip("与目标场景 PlayerSpawnPoint 的 Spawn Id 一致")]
+        public string targetSpawnId;
+        public string[] flagsToAddOnTeleport;
+        public string[] flagsToRemoveOnTeleport;
+    }
 
-    [Header("条件（可选）")]
-    [Tooltip("需全部存在才能传送；留空则不限制")]
-    [SerializeField] private string[] requiredFlags;
-    [Tooltip("条件未满足时显示的提示；留空则不显示")]
-    [SerializeField] private string lockedPromptMessage;
-
-    [Header("切换场景")]
-    [Tooltip("File → Build Settings 里 Scenes In Build 左侧的序号，从 0 开始")]
-    [SerializeField] private int targetSceneBuildIndex = 1;
-    [Tooltip("与目标场景 PlayerSpawnPoint 的 Spawn Id 一致")]
-    [SerializeField] private string targetSpawnId;
-
-    [Header("传送瞬间 Flag（可选）")]
-    [Tooltip("按 F 确认传送、加载新场景前 GameEventManager.Set")]
-    [SerializeField] private string[] flagsToAddOnTeleport;
-    [Tooltip("按 F 确认传送、加载新场景前 GameEventManager.Remove")]
-    [SerializeField] private string[] flagsToRemoveOnTeleport;
+    [SerializeField] Entry[] entries;
+    [SerializeField] GameObject promptRoot;
+    [SerializeField] TMP_Text promptText;
 
     [Header("Debug（运行时只读）")]
-    [SerializeField] private bool _inside;
-    [SerializeField] private bool playerInputLocked;
+    [SerializeField] string activeEntryFlags;
+    [SerializeField] bool _inside;
+    [SerializeField] bool playerInputLocked;
 
+    Entry activeEntry;
     Transform _player;
 
     void Awake()
@@ -38,47 +39,62 @@ public class TeleportPortal : MonoBehaviour
 
         if (promptRoot != null)
             promptRoot.SetActive(false);
+
+        GameEventManager.FlagAdded += OnFlagsChanged;
+        GameEventManager.FlagRemoved += OnFlagsChanged;
+        RefreshActiveEntry();
     }
 
-    void ShowPrompt()
+    void OnDestroy()
     {
-        EventHintUI.Show(this, promptRoot, promptText, promptMessage);
+        GameEventManager.FlagAdded -= OnFlagsChanged;
+        GameEventManager.FlagRemoved -= OnFlagsChanged;
     }
 
-    void HidePrompt()
-    {
-        EventHintUI.Hide(this, promptRoot);
-    }
+    void OnFlagsChanged(string _) => RefreshActiveEntry();
 
     void Update()
     {
         playerInputLocked = PlayerInputLock.IsLocked;
 
-        if (!_inside || playerInputLocked)
+        if (!_inside || playerInputLocked || activeEntry == null)
         {
             HidePrompt();
             return;
         }
 
-        if (!CanTeleport())
+        if (!CanTeleport(activeEntry))
         {
-            if (string.IsNullOrWhiteSpace(lockedPromptMessage))
+            if (string.IsNullOrWhiteSpace(activeEntry.lockedPromptMessage))
                 HidePrompt();
             else
-                EventHintUI.Show(this, promptRoot, promptText, lockedPromptMessage);
+                EventHintUI.Show(this, promptRoot, promptText, activeEntry.lockedPromptMessage);
             return;
         }
 
-        ShowPrompt();
+        EventHintUI.Show(this, promptRoot, promptText, activeEntry.promptMessage);
 
         if (!Input.GetKeyDown(KeyCode.F) || _player == null)
             return;
 
-        if (string.IsNullOrEmpty(targetSpawnId))
+        TryTeleport();
+    }
+
+    void TryTeleport()
+    {
+        if (activeEntry == null)
             return;
 
-        ApplyTeleportFlags();
-        SceneLoadRunner.LoadScene(targetSceneBuildIndex, targetSpawnId);
+
+
+        int buildIndex = activeEntry.targetSceneBuildIndex;
+        string spawnId = activeEntry.targetSpawnId.Trim();
+
+        SceneTransition.QueueLoadCompleteFlags(
+            activeEntry.flagsToAddOnTeleport,
+            activeEntry.flagsToRemoveOnTeleport);
+
+        SceneLoadRunner.LoadScene(buildIndex, spawnId);
     }
 
     void OnTriggerEnter(Collider other)
@@ -100,12 +116,60 @@ public class TeleportPortal : MonoBehaviour
         HidePrompt();
     }
 
-    bool CanTeleport()
+    void RefreshActiveEntry()
     {
-        if (requiredFlags == null || requiredFlags.Length == 0)
+        activeEntry = ResolveActiveEntry();
+        activeEntryFlags = activeEntry != null ? FormatFlags(activeEntry.requiredFlags) : string.Empty;
+    }
+
+    Entry ResolveActiveEntry()
+    {
+        if (entries == null || entries.Length == 0)
+            return null;
+
+        Entry fallback = null;
+        Entry matched = null;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Entry entry = entries[i];
+            if (entry == null || !HasAllFlags(entry.requiredFlags))
+                continue;
+
+            if (IsFallbackEntry(entry))
+                fallback = entry;
+            else
+                matched = entry;
+        }
+
+        return matched ?? fallback;
+    }
+
+    static bool CanTeleport(Entry entry) =>
+        entry != null
+        && !string.IsNullOrEmpty(entry.targetSpawnId)
+        && HasAllFlags(entry.requiredFlags);
+
+    static bool IsFallbackEntry(Entry entry)
+    {
+        if (entry.requiredFlags == null || entry.requiredFlags.Length == 0)
             return true;
 
-        foreach (string flag in requiredFlags)
+        foreach (string flag in entry.requiredFlags)
+        {
+            if (!string.IsNullOrWhiteSpace(flag))
+                return false;
+        }
+
+        return true;
+    }
+
+    static bool HasAllFlags(string[] flags)
+    {
+        if (flags == null || flags.Length == 0)
+            return true;
+
+        foreach (string flag in flags)
         {
             if (string.IsNullOrWhiteSpace(flag))
                 continue;
@@ -117,24 +181,16 @@ public class TeleportPortal : MonoBehaviour
         return true;
     }
 
-    void ApplyTeleportFlags()
+    static string FormatFlags(string[] flags)
     {
-        if (flagsToAddOnTeleport != null)
-        {
-            foreach (string flag in flagsToAddOnTeleport)
-            {
-                if (!string.IsNullOrWhiteSpace(flag))
-                    GameEventManager.Set(flag.Trim());
-            }
-        }
+        if (flags == null || flags.Length == 0)
+            return "(default)";
 
-        if (flagsToRemoveOnTeleport != null)
-        {
-            foreach (string flag in flagsToRemoveOnTeleport)
-            {
-                if (!string.IsNullOrWhiteSpace(flag))
-                    GameEventManager.Remove(flag.Trim());
-            }
-        }
+        return string.Join(", ", flags);
+    }
+
+    void HidePrompt()
+    {
+        EventHintUI.Hide(this, promptRoot);
     }
 }

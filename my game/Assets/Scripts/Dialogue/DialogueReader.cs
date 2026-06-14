@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 读取 Dialogue JSON，左键下一句。仅通过 StartReading(TextAsset) 播放。
@@ -11,6 +12,10 @@ public class DialogueReader : MonoBehaviour
     [SerializeField] private GameObject dialoguePanel;
     [SerializeField] private TMP_Text speakerText;
     [SerializeField] private TMP_Text bodyText;
+    [SerializeField] private Image portraitImage;
+
+    [Header("头像")]
+    [SerializeField] private DialoguePortraitDatabase portraitDatabase;
 
     [Header("流程")]
     [SerializeField] private bool lockPlayerInput = true;
@@ -28,6 +33,9 @@ public class DialogueReader : MonoBehaviour
     {
         if (dialoguePanel != null)
             dialoguePanel.SetActive(false);
+
+        EnsurePortraitRefs();
+        HidePortrait();
     }
 
     void OnDisable()
@@ -53,8 +61,10 @@ public class DialogueReader : MonoBehaviour
             return;
         }
 
-        if (!TryParse(jsonAsset.text, out DialogueData parsed))
+        if (!DialogueJsonParser.TryParse(jsonAsset.text, out DialogueData parsed))
             return;
+
+        EnsurePortraitRefs();
 
         data = parsed;
         lineIndex = 0;
@@ -93,6 +103,7 @@ public class DialogueReader : MonoBehaviour
         if (dialoguePanel != null)
             dialoguePanel.SetActive(false);
 
+        HidePortrait();
         UnlockPlayer();
         ReadingFinished?.Invoke();
     }
@@ -122,19 +133,71 @@ public class DialogueReader : MonoBehaviour
             speakerText.text = line.speakerName ?? "";
         if (bodyText != null)
             bodyText.text = line.text ?? "";
+
+        ApplyPortrait(line);
     }
 
-    static bool TryParse(string json, out DialogueData result)
+    void EnsurePortraitRefs()
     {
-        result = JsonUtility.FromJson<DialogueData>(json);
+        if (portraitImage == null)
+            portraitImage = FindPortraitImage();
 
-        if (result?.lines == null || result.lines.Length == 0)
+        if (portraitDatabase == null)
+            portraitDatabase = Resources.Load<DialoguePortraitDatabase>("DialoguePortraitDatabase");
+
+#if UNITY_EDITOR
+        if (portraitDatabase == null)
         {
-            Debug.LogError("[DialogueReader] JSON 解析失败或 lines 为空。");
-            result = null;
-            return false;
+            portraitDatabase = UnityEditor.AssetDatabase.LoadAssetAtPath<DialoguePortraitDatabase>(
+                "Assets/Emotion/DialoguePortraitDatabase.asset");
+        }
+#endif
+    }
+
+    Image FindPortraitImage()
+    {
+        if (portraitImage != null)
+            return portraitImage;
+
+        Transform root = dialoguePanel != null ? dialoguePanel.transform : transform;
+        Image[] images = root.GetComponentsInChildren<Image>(true);
+        for (int i = 0; i < images.Length; i++)
+        {
+            if (images[i].gameObject.name.IndexOf("portrait", StringComparison.OrdinalIgnoreCase) >= 0)
+                return images[i];
         }
 
-        return true;
+        return null;
+    }
+
+    void ApplyPortrait(DialogueLine line)
+    {
+        EnsurePortraitRefs();
+
+        if (portraitImage == null || portraitDatabase == null || line.emo <= 0)
+        {
+            HidePortrait();
+            return;
+        }
+
+        if (!portraitDatabase.TryGetSprite(line.speakerName, line.emo, out Sprite sprite))
+        {
+            HidePortrait();
+            return;
+        }
+
+        portraitImage.sprite = sprite;
+        portraitImage.enabled = true;
+
+        if (!portraitImage.gameObject.activeSelf)
+            portraitImage.gameObject.SetActive(true);
+    }
+
+    void HidePortrait()
+    {
+        if (portraitImage == null)
+            return;
+
+        portraitImage.enabled = false;
     }
 }

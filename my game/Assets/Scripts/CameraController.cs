@@ -28,6 +28,12 @@ public class CameraController : MonoBehaviour
 
     public void ExitIndoorZone() => indoorZoneCount = Mathf.Max(0, indoorZoneCount - 1);
 
+    public void SetTarget(Transform newTarget)
+    {
+        target = newTarget;
+        characterController = newTarget != null ? newTarget.GetComponent<CharacterController>() : null;
+    }
+
     void Start()
     {
         if (!PlayerInputLock.IsLocked)
