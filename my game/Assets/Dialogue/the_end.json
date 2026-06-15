@@ -1,0 +1,165 @@
+{
+    "id": "ending_peace_returns",
+    "title": "Peace Returns",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "The mana fluctuation is fading..."
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 3,
+    "text": "Much faster than I expected."
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Lily",
+    "emo": 1,
+    "text": "Is that a good sign?"
+    },
+    {
+    "id": "line_004",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "It is."
+    },
+    {
+    "id": "line_005",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 2,
+    "text": "The source of the disturbance has weakened. The monsters should gradually calm down."
+    },
+    {
+    "id": "line_006",
+    "type": "line",
+    "speakerName": "Lucy",
+    "emo": 1,
+    "text": "So... no more monster waves?"
+    },
+    {
+    "id": "line_007",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 2,
+    "text": "There will always be monsters in the wild."
+    },
+    {
+    "id": "line_008",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "But a disaster like this won't happen again for a very long time."
+    },
+    {
+    "id": "line_009",
+    "type": "line",
+    "speakerName": "Lily",
+    "emo": 3,
+    "text": "...That's a relief."
+    },
+    {
+    "id": "line_010",
+    "type": "line",
+    "speakerName": "Lucy",
+    "emo": 2,
+    "text": "We actually made it."
+    },
+    {
+    "id": "line_011",
+    "type": "line",
+    "speakerName": "Lucy",
+    "emo": 2,
+    "text": "The village is safe."
+    },
+    {
+    "id": "line_012",
+    "type": "line",
+    "speakerName": "Lily",
+    "emo": 4,
+    "text": "Rover, we wouldn't be standing here without your help."
+    },
+    {
+    "id": "line_013",
+    "type": "line",
+    "speakerName": "Villagers",
+    "emo": 1,
+    "text": "Thank you, Rover!"
+    },
+    {
+    "id": "line_014",
+    "type": "line",
+    "speakerName": "Villagers",
+    "emo": 2,
+    "text": "You saved our homes!"
+    },
+    {
+    "id": "line_015",
+    "type": "line",
+    "speakerName": "Villagers",
+    "emo": 3,
+    "text": "We'll never forget this!"
+    },
+    {
+    "id": "line_016",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "I wasn't fighting alone."
+    },
+    {
+    "id": "line_017",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 4,
+    "text": "Everyone here stood their ground and protected what mattered to them."
+    },
+    {
+    "id": "line_018",
+    "type": "line",
+    "speakerName": "Lucy",
+    "emo": 1,
+    "text": "What will you do now?"
+    },
+    {
+    "id": "line_019",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 1,
+    "text": "Keep traveling."
+    },
+    {
+    "id": "line_020",
+    "type": "line",
+    "speakerName": "Lily",
+    "emo": 4,
+    "text": "Then this village will always welcome you back."
+    },
+    {
+    "id": "line_021",
+    "type": "line",
+    "speakerName": "Lucy",
+    "emo": 2,
+    "text": "Don't stay away too long, alright?"
+    },
+    {
+    "id": "line_022",
+    "type": "line",
+    "speakerName": "Rover",
+    "emo": 3,
+    "text": "...I'll try."
+    }
+    ]
+    }

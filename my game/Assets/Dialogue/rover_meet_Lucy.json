@@ -11,156 +11,182 @@
     "id": "line_001",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "...That's strange."
     },
     {
     "id": "line_002",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "The houses are still standing, but the streets are empty."
     },
     {
     "id": "line_003",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "Hey! You shouldn't be here!"
     },
     {
     "id": "line_004",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Easy. I'm not looking for trouble."
     },
     {
     "id": "line_005",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "What happened to everyone? This place looks abandoned."
     },
     {
     "id": "line_006",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 1,
     "text": "Most of the villagers left yesterday."
     },
     {
     "id": "line_007",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "The monsters around the mountain have been acting strangely for days. Louder. More aggressive. Like they're gathering for something."
     },
     {
     "id": "line_008",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "So the mana fluctuation wasn't my imagination."
     },
     {
     "id": "line_009",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 3,
     "text": "You can sense that sort of thing?"
     },
     {
     "id": "line_010",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Enough to know something's wrong."
     },
     {
     "id": "line_011",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "If the danger is real, why haven't you left too?"
     },
     {
     "id": "line_012",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 1,
     "text": "Some people couldn't leave in time."
     },
     {
     "id": "line_013",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "And some of us chose to stay."
     },
     {
     "id": "line_014",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "Chosen to stay?"
     },
     {
     "id": "line_015",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "This is our home. If we all run, there may not be anything left to come back to."
     },
     {
     "id": "line_016",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 1,
     "text": "A few hunters and volunteers are preparing defenses near the outskirts."
     },
     {
     "id": "line_017",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "We're not soldiers. But we'll protect what we can."
     },
     {
     "id": "line_018",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "That's a heavy burden for a handful of villagers."
     },
     {
     "id": "line_019",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 1,
     "text": "Maybe."
     },
     {
     "id": "line_020",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 2,
     "text": "But waiting for someone else to save us doesn't feel much safer."
     },
     {
     "id": "line_021",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "...Fair enough."
     },
     {
     "id": "line_022",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Then you're not facing this alone."
     },
     {
     "id": "line_023",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 3,
     "text": "You mean..."
     },
     {
     "id": "line_024",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "I'll help defend the village."
     },
     {
     "id": "line_025",
     "type": "line",
     "speakerName": "Lucy",
+    "emo": 3,
     "text": "Really? We could use all the help we can get."
     },
     {
     "id": "line_026",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Let's deal with the monsters first. We can talk afterward."
     }
     ]

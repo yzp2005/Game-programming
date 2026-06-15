@@ -1,0 +1,32 @@
+{
+"id": "lily_prayer",
+"title": "Lily's Prayer",
+"settings": {
+"background": null,
+"bgm": null,
+"autoPlay": false
+},
+"lines": [
+{
+"id": "line_001",
+"type": "line",
+"speakerName": "Lily",
+"text": "Please... let everyone make it through this safely.",
+"emo": 2
+},
+{
+"id": "line_002",
+"type": "line",
+"speakerName": "Lily",
+"text": "We've already come this far. I'm sure things will get better.",
+"emo": 1
+},
+{
+"id": "line_003",
+"type": "line",
+"speakerName": "Lily",
+"text": "Just a little longer... we can do this.",
+"emo": 4
+}
+]
+}

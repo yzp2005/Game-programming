@@ -1,0 +1,33 @@
+{
+    "id": "rover_after_skill_test",
+    "title": "Rover Monologue — After the Battle",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Not bad. Looks like I haven't forgotten everything.",
+    "emo": 4
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "A little rusty, maybe... but that'll come back quickly.",
+    "emo": 1
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "These monsters might actually be useful after all.",
+    "emo": 3
+    }
+    ]
+    }
+    

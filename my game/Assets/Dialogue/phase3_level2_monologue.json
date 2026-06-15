@@ -1,0 +1,39 @@
+{
+    "id": "rover_skill_monologue",
+    "title": "Rover Monologue — Before the Second Wave",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "It's been a while since I last used magic.",
+    "emo": 1
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Maybe I've been relying on my blade a little too much.",
+    "emo": 2
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Well, these monsters should make decent practice targets.",
+    "emo": 3
+    },
+    {
+    "id": "line_004",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Let's see if I'm still as good as I remember.",
+    "emo": 4
+    }
+    ]
+    }

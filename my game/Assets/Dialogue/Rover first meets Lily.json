@@ -11,84 +11,98 @@
         "id": "line_001",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 1,
         "text": "Excuse me — do you have a moment? I couldn't help but notice something strange when I rode in."
       },
       {
         "id": "line_002",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 1,
         "text": "Oh? A traveler. Welcome to the village. What's on your mind?"
       },
       {
         "id": "line_003",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 2,
         "text": "There's a mana fluctuation coming from somewhere nearby. Faint, but irregular. Do you know what might be causing it?"
       },
       {
         "id": "line_004",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 1,
         "text": "Ah, that. You must mean the northern side of the mountain. Part of the village extends out that way — open terrain, no walls. Monsters have been spotted there, off and on."
       },
       {
         "id": "line_005",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 2,
         "text": "Monsters. And that doesn't worry anyone around here?"
       },
       {
         "id": "line_006",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 1,
         "text": "Not really, no. We have the Dawncore watching over us. It's kept this village safe for as long as anyone can remember. Nothing's gotten through — not once."
       },
       {
         "id": "line_007",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 2,
         "text": "The Dawncore..."
       },
       {
         "id": "line_008",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 2,
         "text": "I don't doubt it's been reliable. But the mana I'm picking up isn't steady. It's fluctuating — spiking, then dropping. That's not normal background noise."
       },
       {
         "id": "line_009",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 2,
         "text": "Hmm. I'll be honest — most people here can't sense mana at all. If something really is off, I wouldn't know how to tell."
       },
       {
         "id": "line_010",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 2,
         "text": "Which is exactly what concerns me."
       },
       {
         "id": "line_011",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 1,
         "text": "Well, if your gut's telling you something's wrong, maybe go have a look yourself. Curiosity's not a bad thing. Oh — and you won't have to trek all the way on foot. There's a waypoint portal just a little ways from here. It'll take you right to that part of the mountain."
       },
       {
         "id": "line_012",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 1,
         "text": "A portal. Convenient."
       },
       {
         "id": "line_013",
         "type": "line",
         "speakerName": "Rover",
+        "emo": 1,
         "text": "...Alright. I'll check it out. I'd rather be wrong and come back looking foolish than ignore this and regret it later."
       },
       {
         "id": "line_014",
         "type": "line",
         "speakerName": "Lily",
+        "emo": 3,
         "text": "Stay safe out there. And hey — feel free to come back and tell me what you find."
       }
     ]

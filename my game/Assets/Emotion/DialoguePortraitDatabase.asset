@@ -19,3 +19,14 @@ MonoBehaviour:
     - {fileID: 21300000, guid: 9e5b0f7ff578bc841b5f31f0ba4a882d, type: 3}
     - {fileID: 21300000, guid: 26aa848bf0183354da7eeb2df5a4708d, type: 3}
     - {fileID: 21300000, guid: c4570a3a89d06e048b904832345be1e7, type: 3}
+  - speakerName: Lily
+    emoSprites:
+    - {fileID: 21300000, guid: 4911f8b55cad3e74789429b7b06c5c57, type: 3}
+    - {fileID: 21300000, guid: 287aded18dbc8db4183a93992d33ebed, type: 3}
+    - {fileID: 21300000, guid: c1ac90b84d24fa1489df07071d64bf34, type: 3}
+    - {fileID: 21300000, guid: c3985cb7b2d7052488eb77f1fd71c2fa, type: 3}
+  - speakerName: Lucy
+    emoSprites:
+    - {fileID: 21300000, guid: a9f6037d798ac2444bb659df5dd24180, type: 3}
+    - {fileID: 21300000, guid: 47e0a57fb14dcc847b3a4c223980753e, type: 3}
+    - {fileID: 21300000, guid: 82b071f8ebb564e4c9c8e0d3ab126d81, type: 3}

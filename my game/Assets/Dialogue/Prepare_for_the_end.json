@@ -1,0 +1,75 @@
+{
+    "id": "prepare_for_next_wave",
+    "title": "Prepare for the Next Wave",
+    "settings": {
+    "background": null,
+    "bgm": null,
+    "autoPlay": false
+    },
+    "lines": [
+    {
+    "id": "line_001",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "The mana is getting worse.",
+    "emo": 2
+    },
+    {
+    "id": "line_002",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Whatever is causing this, it's growing stronger.",
+    "emo": 2
+    },
+    {
+    "id": "line_003",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "So the next attack won't be like the last ones?",
+    "emo": 1
+    },
+    {
+    "id": "line_004",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "No. We should expect a much heavier assault.",
+    "emo": 2
+    },
+    {
+    "id": "line_005",
+    "type": "line",
+    "speakerName": "Villager1",
+    "text": "Then we'll reinforce the barricades right away.",
+    "emo": 4
+    },
+    {
+    "id": "line_006",
+    "type": "line",
+    "speakerName": "Lily",
+    "text": "I'll gather everyone and make sure supplies are ready.",
+    "emo": 4
+    },
+    {
+    "id": "line_007",
+    "type": "line",
+    "speakerName": "Villager1",
+    "text": "The village won't back down.",
+    "emo": 4
+    },
+    {
+    "id": "line_008",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "Good. Stay focused and trust each other.",
+    "emo": 4
+    },
+    {
+    "id": "line_009",
+    "type": "line",
+    "speakerName": "Rover",
+    "text": "When they come, we'll be ready.",
+    "emo": 4
+    }
+    ]
+    }
+    

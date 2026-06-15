@@ -11,42 +11,49 @@
     "id": "line_001",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "Rover, what you used in the last battle... was that magic?"
     },
     {
     "id": "line_002",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "You could call it that."
     },
     {
     "id": "line_003",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 3,
     "text": "I've never seen real magic before."
     },
     {
     "id": "line_004",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "If another monster wave comes, maybe you could show us a few more tricks."
     },
     {
     "id": "line_005",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "A few more tricks?"
     },
     {
     "id": "line_006",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "For morale."
     },
     {
     "id": "line_007",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 4,
     "text": "chuckles I'll see what I can do."
     }
     ]

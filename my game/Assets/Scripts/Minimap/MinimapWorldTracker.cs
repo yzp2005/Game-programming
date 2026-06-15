@@ -154,6 +154,9 @@ public class MinimapWorldTracker : MonoBehaviour
     void RefreshPlayer()
     {
         if (player == null)
+            TryResolvePlayer();
+
+        if (player == null)
         {
             playerSnapshot = default;
             return;
@@ -165,6 +168,19 @@ public class MinimapWorldTracker : MonoBehaviour
             Yaw = player.eulerAngles.y,
             IsValid = true
         };
+    }
+
+    void TryResolvePlayer()
+    {
+        if (PlayerCrossScene.TryGetPersistedPlayer(out GameObject persisted))
+        {
+            player = persisted.transform;
+            return;
+        }
+
+        GameObject tagged = GameObject.FindGameObjectWithTag("Player");
+        if (tagged != null)
+            player = tagged.transform;
     }
 
     void RefreshEntities()

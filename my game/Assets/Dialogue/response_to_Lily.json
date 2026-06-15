@@ -11,126 +11,147 @@
     "id": "line_001",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 3,
     "text": "Rover! You're back."
     },
     {
     "id": "line_002",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "We received word from the northern village. They said you helped hold back the monster attack."
     },
     {
     "id": "line_003",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Only the first wave. The danger hasn't passed."
     },
     {
     "id": "line_004",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "The monsters are still gathering, and the mana disturbance remains."
     },
     {
     "id": "line_005",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "I was afraid you'd say that."
     },
     {
     "id": "line_006",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "Still, what you've done has given the villagers hope."
     },
     {
     "id": "line_007",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "I've seen how you fight, Rover. More importantly, I've seen how willing you are to help strangers."
     },
     {
     "id": "line_008",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "So I'd like to ask something of you."
     },
     {
     "id": "line_009",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Go on."
     },
     {
     "id": "line_010",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "Will you help protect our villages until we discover what's causing all of this?"
     },
     {
     "id": "line_011",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "I won't ask you to carry the burden alone."
     },
     {
     "id": "line_012",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "The villagers will continue to stand and fight beside you."
     },
     {
     "id": "line_013",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 2,
     "text": "But we need someone capable of leading the effort."
     },
     {
     "id": "line_014",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 2,
     "text": "...You place a lot of trust in someone you barely know."
     },
     {
     "id": "line_015",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "Maybe."
     },
     {
     "id": "line_016",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "But you've already proven more trustworthy than many people I've known for years."
     },
     {
     "id": "line_017",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "..."
     },
     {
     "id": "line_018",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "Alright."
     },
     {
     "id": "line_019",
     "type": "line",
     "speakerName": "Rover",
+    "emo": 1,
     "text": "I'll help protect the villages and find the source of these disturbances."
     },
     {
     "id": "line_020",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 3,
     "text": "Thank you, Rover."
     },
     {
     "id": "line_021",
     "type": "line",
     "speakerName": "Lily",
+    "emo": 1,
     "text": "Then let's prepare for whatever comes next."
     }
     ]
