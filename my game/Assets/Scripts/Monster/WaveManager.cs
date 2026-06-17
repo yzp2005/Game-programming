@@ -54,6 +54,7 @@ public class WaveManager : MonoBehaviour
         StopCoroutine(waveRoutine);
         waveRoutine = null;
         aliveSpawnedCount = 0;
+        GameMessageFeed.ClearBanner();
     }
 
     IEnumerator RunWaves()
@@ -71,7 +72,9 @@ public class WaveManager : MonoBehaviour
                 Wave wave = waves[w];
 
                 if (wave.delayBeforeWave > 0f)
-                    yield return new WaitForSeconds(wave.delayBeforeWave);
+                    yield return RunWaveCountdown(w, wave.delayBeforeWave);
+
+                GameMessageFeed.Post($"Wave {w + 1} started.", GameMessageCategory.Combat);
 
                 if (wave.spawners != null)
                 {
@@ -123,5 +126,32 @@ public class WaveManager : MonoBehaviour
     {
         while (aliveSpawnedCount > 0)
             yield return null;
+    }
+
+    IEnumerator RunWaveCountdown(int waveIndex, float duration)
+    {
+        int waveNumber = waveIndex + 1;
+        float remaining = duration;
+        int lastShownSeconds = -1;
+
+        while (remaining > 0f)
+        {
+            int seconds = Mathf.CeilToInt(remaining);
+            if (seconds != lastShownSeconds)
+            {
+                string message = $"Wave {waveNumber} starts in {seconds}s";
+                lastShownSeconds = seconds;
+
+                if (GameMessageFeed.HasBanner)
+                    GameMessageFeed.SetBanner(message);
+                else
+                    GameMessageFeed.Post(message, GameMessageCategory.Countdown);
+            }
+
+            yield return null;
+            remaining -= Time.deltaTime;
+        }
+
+        GameMessageFeed.ClearBanner();
     }
 }

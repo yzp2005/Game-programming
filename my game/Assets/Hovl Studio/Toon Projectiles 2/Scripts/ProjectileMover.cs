@@ -21,9 +21,6 @@ public class ProjectileMover : MonoBehaviour
 
     void Start()
     {
-        if (rb == null)
-            rb = GetComponent<Rigidbody>();
-
         if (flash != null)
         {
             var flashInstance = Instantiate(flash, transform.position, Quaternion.identity);
@@ -60,6 +57,9 @@ public class ProjectileMover : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        if (collision.contactCount == 0)
+            return;
+
         if (rb != null)
             rb.constraints = RigidbodyConstraints.FreezeAll;
         speed = 0;

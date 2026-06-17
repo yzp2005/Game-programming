@@ -1,0 +1,143 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &8164999567093167711
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2377226022201319412}
+  - component: {fileID: 5935905451799245340}
+  m_Layer: 0
+  m_Name: QuestProgressDisplay
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2377226022201319412
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8164999567093167711}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5935905451799245340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8164999567093167711}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8ecd6f64782aba4489be3c086858066a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  entries:
+  - requiredFlags:
+    - phase1_level1
+    questName: Find a villager nearby.
+    questContent: Find a villager nearby and talk to her.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase2_level1
+    questName: Find the teleport.
+    questContent: Arrive at Northern Village via teleport.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase3_level1
+    questName: Find the lonely villager.
+    questContent: Find the lonely villager and ask what happened.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - fight_level1
+    questName: Fight!!
+    questContent: 'Defense the northen village alongside with villagers. '
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase1_level2
+    questName: Find Lily
+    questContent: Find Lily and told her what happned.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase2_level2
+    questName: Find Lily
+    questContent: 'Lily seems to want to talk to you. '
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase2_level2
+    - enterenabled
+    questName: Go to NorthenVillage via Portal
+    questContent: 1. [Main] Start with Portal 2. [Optional] find Lily to change the
+      skills
+    priority: 10
+    sceneNameFilter: 
+  - requiredFlags:
+    - fight_level2
+    questName: Fight!!!
+    questContent: 'Defense the northen village alongside with villagers. '
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase1_level3
+    questName: Find Lily and Lucy
+    questContent: A bad premonition suddenly comes over you.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase2_level3
+    - enterenabled
+    questName: GO GO GO
+    questContent: 1. [Main] Start with Portal 2. [Optional] find Lily to change the
+      skills
+    priority: 10
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase3_level3
+    questName: Observe Lily
+    questContent: She looks worried.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - fight_level3
+    questName: Fight!!!
+    questContent: 'Defense the northen village alongside with villagers. '
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase1_level4
+    questName: Find Villagers
+    questContent: It seems that they have sth to say.
+    priority: 0
+    sceneNameFilter: 
+  - requiredFlags:
+    - phase2_level4
+    questName: Hang around
+    questContent: "It\u2019s nice to have a quiet morning for once."
+    priority: 0
+    sceneNameFilter: 
+  hideWhenNoMatch: 1
+  fallbackEntry:
+    requiredFlags: []
+    questName: 
+    questContent: 
+    priority: 0
+    sceneNameFilter: 
+  refreshDelay: 0

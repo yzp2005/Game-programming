@@ -3,14 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>监听 GameEventManager 标签，出现时把物体传送到 Destination 标记点。</summary>
+/// <summary>
+/// 挂在单个场景内：监听标签移动物体；进入本场景时若 flag 已存在也会立即摆放到目标点。
+/// </summary>
 [DisallowMultipleComponent]
 public class FlagObjectMoveTrigger : MonoBehaviour
 {
     [Serializable]
     public class Entry
     {
-        [Tooltip("首次 Set 此 flag 时移动")]
+        [Tooltip("存在此 flag 时移动")]
         public string whenFlag;
         [Tooltip("要移动的物体，留空则移动本脚本所在物体")]
         public Transform target;
@@ -33,22 +35,7 @@ public class FlagObjectMoveTrigger : MonoBehaviour
 
     void Awake() => GameEventManager.FlagAdded += OnFlagAdded;
 
-    void Start()
-    {
-        if (entries == null)
-            return;
-
-        for (int i = 0; i < entries.Length; i++)
-        {
-            Entry entry = entries[i];
-            if (entry == null || !GameEventManager.Has(entry.whenFlag))
-                continue;
-
-            ApplyMove(entry, immediate: true);
-            if (entry.onlyOnce && !string.IsNullOrWhiteSpace(entry.whenFlag))
-                triggeredFlags.Add(entry.whenFlag.Trim());
-        }
-    }
+    void Start() => ApplyExistingFlags();
 
     void OnDestroy()
     {
@@ -70,6 +57,24 @@ public class FlagObjectMoveTrigger : MonoBehaviour
             TryMove(entries[i], flag);
     }
 
+    void ApplyExistingFlags()
+    {
+        if (entries == null)
+            return;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Entry entry = entries[i];
+            if (entry == null || string.IsNullOrWhiteSpace(entry.whenFlag))
+                continue;
+
+            if (!GameEventManager.Has(entry.whenFlag.Trim()))
+                continue;
+
+            ApplyMove(entry, immediate: true, applyFinishFlags: false);
+        }
+    }
+
     void TryMove(Entry entry, string flag)
     {
         if (entry == null || !FlagMatches(entry.whenFlag, flag))
@@ -82,10 +87,10 @@ public class FlagObjectMoveTrigger : MonoBehaviour
         if (entry.onlyOnce)
             triggeredFlags.Add(key);
 
-        ApplyMove(entry, immediate: entry.moveDuration <= 0f);
+        ApplyMove(entry, immediate: entry.moveDuration <= 0f, applyFinishFlags: true);
     }
 
-    void ApplyMove(Entry entry, bool immediate)
+    void ApplyMove(Entry entry, bool immediate, bool applyFinishFlags)
     {
         Transform target = entry.target != null ? entry.target : transform;
         if (target == null || entry.destination == null)
@@ -104,15 +109,23 @@ public class FlagObjectMoveTrigger : MonoBehaviour
         {
             StopMove(target);
             target.SetPositionAndRotation(position, rotation);
-            FlagEventActions.Apply(entry.flagsToAddOnFinish, entry.flagsToRemoveOnFinish);
+
+            if (applyFinishFlags)
+                FlagEventActions.Apply(entry.flagsToAddOnFinish, entry.flagsToRemoveOnFinish);
+
             return;
         }
 
         StopMove(target);
-        activeMoves[target] = StartCoroutine(MoveRoutine(target, position, rotation, entry));
+        activeMoves[target] = StartCoroutine(MoveRoutine(target, position, rotation, entry, applyFinishFlags));
     }
 
-    IEnumerator MoveRoutine(Transform target, Vector3 position, Quaternion rotation, Entry entry)
+    IEnumerator MoveRoutine(
+        Transform target,
+        Vector3 position,
+        Quaternion rotation,
+        Entry entry,
+        bool applyFinishFlags)
     {
         Vector3 startPos = target.position;
         Quaternion startRot = target.rotation;
@@ -131,7 +144,9 @@ public class FlagObjectMoveTrigger : MonoBehaviour
 
         target.SetPositionAndRotation(position, rotation);
         activeMoves.Remove(target);
-        FlagEventActions.Apply(entry.flagsToAddOnFinish, entry.flagsToRemoveOnFinish);
+
+        if (applyFinishFlags)
+            FlagEventActions.Apply(entry.flagsToAddOnFinish, entry.flagsToRemoveOnFinish);
     }
 
     void StopMove(Transform target)

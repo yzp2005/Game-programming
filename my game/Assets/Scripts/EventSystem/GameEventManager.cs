@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>全局事件标签。场景放一个空物体挂此脚本即可。</summary>
+/// <summary>全局事件标签。与 GameSaveSystem 同物体，由 GameSaveSystem 保证存在。</summary>
+[DefaultExecutionOrder(-500)]
 public class GameEventManager : MonoBehaviour
 {
     public static GameEventManager Instance { get; private set; }
@@ -25,6 +26,10 @@ public class GameEventManager : MonoBehaviour
         }
 
         Instance = this;
+
+        if (transform.parent != null)
+            transform.SetParent(null);
+
         DontDestroyOnLoad(gameObject);
     }
 
@@ -86,5 +91,24 @@ public class GameEventManager : MonoBehaviour
             return Array.Empty<string>();
 
         return Instance._flags.OrderBy(flag => flag, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>读档时静默替换全部标签，不触发 FlagAdded / FlagRemoved。</summary>
+    public static void RestoreFlags(IReadOnlyList<string> flags)
+    {
+        if (Instance == null)
+            return;
+
+        Instance._flags.Clear();
+
+        if (flags == null)
+            return;
+
+        for (int i = 0; i < flags.Count; i++)
+        {
+            string flag = flags[i];
+            if (!string.IsNullOrWhiteSpace(flag))
+                Instance._flags.Add(flag.Trim());
+        }
     }
 }

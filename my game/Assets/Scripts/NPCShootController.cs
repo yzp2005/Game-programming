@@ -19,6 +19,8 @@ public class NPCShootController : MonoBehaviour
     [Tooltip("射击动画播放到该进度时自动开火（0~1）。也可在动画 Clip 里加 Animation Event 调用 OnShootFire。")]
     [SerializeField] float fireNormalizedTime = 0.35f;
     [SerializeField] bool autoFireOnAnim = true;
+    [Tooltip("射击时动画播放倍速，越大开火间隔越短（攻速越快）")]
+    [Min(0.1f)] [SerializeField] float shootAnimSpeed = 1f;
 
     [Header("射击")]
     [SerializeField] Transform firePoint;
@@ -66,7 +68,6 @@ public class NPCShootController : MonoBehaviour
 
         EnsureTriggerSetup();
         EnsureAimLine();
-        MinimapTrackable.EnsureOn(gameObject, MinimapTrackable.BlipKind.Friendly);
     }
 
     void Start()
@@ -92,10 +93,29 @@ public class NPCShootController : MonoBehaviour
         CacheVfxFromProjectilePrefab();
     }
 
+    void OnEnable()
+    {
+        MonsterHealth.OnAnyDeath += OnMonsterDeath;
+    }
+
+    void OnDisable()
+    {
+        MonsterHealth.OnAnyDeath -= OnMonsterDeath;
+    }
+
+    void OnMonsterDeath(MonsterHealth monster)
+    {
+        if (monster != null)
+            RemoveEnemy(monster.transform);
+    }
+
     void Update()
     {
+        PruneInvalidEnemies();
+
         if (currentTarget == null)
         {
+            SetShootAnimSpeed(1f);
             SetAnim(idleAnimValue);
             firedThisShootCycle = false;
             SetAimLineVisible(false);
@@ -105,11 +125,13 @@ public class NPCShootController : MonoBehaviour
 
         if (!IsValidTarget(currentTarget))
         {
+            SetShootAnimSpeed(1f);
             RemoveEnemy(currentTarget);
             RefreshDebugState();
             return;
         }
 
+        SetShootAnimSpeed(shootAnimSpeed);
         FaceTarget(currentTarget);
         SetAnim(shootAnimValue);
 
@@ -206,8 +228,10 @@ public class NPCShootController : MonoBehaviour
         if (projectile.TryGetComponent(out ProjectileMover mover))
             mover.targetPoint = targetPoint;
 
-        if (projectile.TryGetComponent(out ProjectileDamage damage))
-            damage.SetDamage(projectileDamage);
+        ProjectileDamage damage = projectile.GetComponent<ProjectileDamage>();
+        if (damage == null)
+            damage = projectile.AddComponent<ProjectileDamage>();
+        damage.SetDamage(projectileDamage);
     }
 
     void DisablePhysicsProjectile(GameObject projectile)
@@ -223,9 +247,6 @@ public class NPCShootController : MonoBehaviour
             rb.velocity = Vector3.zero;
             rb.isKinematic = true;
         }
-
-        foreach (Collider col in projectile.GetComponentsInChildren<Collider>())
-            col.enabled = false;
     }
 
     void CacheVfxFromProjectilePrefab()
@@ -278,19 +299,53 @@ public class NPCShootController : MonoBehaviour
         currentTarget = enteredEnemies.Count > 0 ? enteredEnemies[0] : null;
         if (currentTarget == null)
         {
+            SetShootAnimSpeed(1f);
             SetAnim(idleAnimValue);
             SetAimLineVisible(false);
         }
     }
 
+    void SetShootAnimSpeed(float speed)
+    {
+        if (animator != null)
+            animator.speed = speed;
+    }
+
     void EnsureTriggerSetup()
     {
-        foreach (Collider col in GetComponentsInChildren<Collider>())
+        foreach (Collider col in GetComponentsInChildren<Collider>(true))
         {
             if (col == null || col is CharacterController)
                 continue;
 
-            col.isTrigger = true;
+            if (col is MeshCollider meshCol && !meshCol.convex)
+                meshCol.enabled = false;
+        }
+
+        CapsuleCollider detect = GetComponent<CapsuleCollider>();
+        if (detect == null)
+        {
+            detect = gameObject.AddComponent<CapsuleCollider>();
+            detect.center = Vector3.up;
+            detect.height = 14f;
+            detect.radius = 7f;
+        }
+
+        detect.isTrigger = true;
+        detect.enabled = true;
+
+        foreach (Collider col in GetComponentsInChildren<Collider>())
+        {
+            if (col == null || col == detect || col is CharacterController)
+                continue;
+
+            if (col is MeshCollider meshCol && !meshCol.convex)
+            {
+                meshCol.enabled = false;
+                continue;
+            }
+
+            col.isTrigger = false;
         }
 
         Rigidbody rb = GetComponent<Rigidbody>();
@@ -355,20 +410,46 @@ public class NPCShootController : MonoBehaviour
         if (target == null || !target.gameObject.activeInHierarchy)
             return false;
 
-        if (target.TryGetComponent(out MonsterHealth health) && health.IsDead)
+        if (target.TryGetComponent(out MonsterHealth monsterHealth) && monsterHealth.IsDead)
+            return false;
+
+        if (target.TryGetComponent(out Health health) && health.IsDead)
             return false;
 
         return true;
     }
 
+    void PruneInvalidEnemies()
+    {
+        for (int i = enteredEnemies.Count - 1; i >= 0; i--)
+        {
+            if (!IsValidTarget(enteredEnemies[i]))
+                RemoveEnemy(enteredEnemies[i]);
+        }
+    }
+
     bool IsEnemy(Collider other)
     {
-        return (enemyLayerMask.value & (1 << other.gameObject.layer)) != 0;
+        if ((enemyLayerMask.value & (1 << other.gameObject.layer)) != 0)
+            return true;
+
+        // 子骨骼/武器常在 Default 层，但根物体在 Enemy 层
+        if (other.GetComponentInParent<MonsterHealth>() is MonsterHealth monsterHealth)
+            return (enemyLayerMask.value & (1 << monsterHealth.gameObject.layer)) != 0;
+
+        if (other.GetComponentInParent<Health>() is Health health)
+            return (enemyLayerMask.value & (1 << health.gameObject.layer)) != 0;
+
+        return false;
     }
 
     Transform GetEnemyRoot(Collider other)
     {
-        MonsterHealth health = other.GetComponentInParent<MonsterHealth>();
+        MonsterHealth monsterHealth = other.GetComponentInParent<MonsterHealth>();
+        if (monsterHealth != null)
+            return monsterHealth.transform;
+
+        Health health = other.GetComponentInParent<Health>();
         if (health != null)
             return health.transform;
 

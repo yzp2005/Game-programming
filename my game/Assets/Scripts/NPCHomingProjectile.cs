@@ -11,7 +11,9 @@ public class NPCHomingProjectile : MonoBehaviour
     float speed;
     float hitDistance;
     float aimHeightOffset;
+    float maxLifetime = 8f;
     GameObject hitVfxPrefab;
+    float spawnTime;
 
     public void Configure(
         Transform targetTransform,
@@ -27,10 +29,17 @@ public class NPCHomingProjectile : MonoBehaviour
         hitVfxPrefab = hitEffectPrefab;
         aimHeightOffset = heightOffset;
         hitDistance = reachDistance;
+        spawnTime = Time.time;
     }
 
     void Update()
     {
+        if (Time.time - spawnTime > maxLifetime)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         if (target == null || !target.gameObject.activeInHierarchy)
         {
             Destroy(gameObject);
@@ -46,22 +55,32 @@ public class NPCHomingProjectile : MonoBehaviour
         Vector3 aimPoint = GetAimPoint(target, aimHeightOffset);
         Vector3 toTarget = aimPoint - transform.position;
         float distance = toTarget.magnitude;
+        float step = speed * Time.deltaTime;
 
-        if (distance <= hitDistance)
+        if (distance <= hitDistance || distance <= step)
         {
             ApplyLockedHit(aimPoint);
             return;
         }
 
         Vector3 direction = toTarget / distance;
-        transform.position += direction * (speed * Time.deltaTime);
+        transform.position += direction * step;
         transform.rotation = Quaternion.LookRotation(direction);
     }
 
     void ApplyLockedHit(Vector3 hitPoint)
     {
-        if (target != null && target.TryGetComponent(out MonsterHealth health) && !health.IsDead)
-            health.TakeDamage(damage);
+        if (target != null)
+        {
+            MonsterHealth monsterHealth = target.GetComponent<MonsterHealth>();
+            if (monsterHealth == null)
+                monsterHealth = target.GetComponentInParent<MonsterHealth>();
+
+            if (monsterHealth != null && !monsterHealth.IsDead)
+                monsterHealth.TakeDamage(damage);
+            else if (target.GetComponentInParent<Health>() is { IsDead: false } legacy)
+                legacy.TakeDamage(damage);
+        }
 
         SpawnHitEffect(hitPoint);
         Destroy(gameObject);

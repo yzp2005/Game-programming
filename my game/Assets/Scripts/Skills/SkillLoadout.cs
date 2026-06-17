@@ -57,12 +57,43 @@ public static class SkillLoadout
         slotCount = Mathf.Max(1, slotCount);
 
         if (slots.Length == slotCount)
+            return;
+
+        string[] next = new string[slotCount];
+        int copyCount = Mathf.Min(slots.Length, slotCount);
+        for (int i = 0; i < copyCount; i++)
+            next[i] = slots[i];
+
+        slots = next;
+        Changed?.Invoke();
+    }
+
+    /// <summary>读档时恢复；长度与存档一致，空槽为 null。</summary>
+    public static void Restore(string[] skillIds)
+    {
+        if (skillIds == null || skillIds.Length == 0)
         {
-            Clear();
+            ResetForNewGame();
             return;
         }
 
-        slots = new string[slotCount];
+        slots = new string[skillIds.Length];
+        for (int i = 0; i < skillIds.Length; i++)
+        {
+            string id = skillIds[i];
+            slots[i] = string.IsNullOrWhiteSpace(id) ? null : id.Trim();
+        }
+
+        Changed?.Invoke();
+    }
+
+    /// <summary>新游戏：清空备战选择。</summary>
+    public static void ResetForNewGame()
+    {
+        if (slots.Length == 0)
+            return;
+
+        slots = Array.Empty<string>();
         Changed?.Invoke();
     }
 

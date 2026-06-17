@@ -2,14 +2,14 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>监听 GameEventManager 标签，出现时播放对话 JSON。</summary>
+/// <summary>监听 GameEventManager 标签，出现时播放对话 JSON；进场景时若已有对应 flag 也会尝试播放。</summary>
 [DisallowMultipleComponent]
 public class FlagDialogueTrigger : MonoBehaviour
 {
     [Serializable]
     public class Entry
     {
-        [Tooltip("首次 Set 此 flag 时播放")]
+        [Tooltip("存在此 flag 时播放（Set 瞬间或进场景时已存在）")]
         public string whenFlag;
         public DialogueReader dialogueReader;
         public TextAsset dialogue;
@@ -20,11 +20,21 @@ public class FlagDialogueTrigger : MonoBehaviour
 
     [SerializeField] Entry[] entries;
 
+    [Header("进场景")]
+    [Tooltip("加载场景后，若已有 Entry 对应的 flag，也尝试播放（读档、跨场景保留 flag）")]
+    [SerializeField] bool checkFlagOnStart = true;
+
     readonly HashSet<string> triggeredFlags = new HashSet<string>();
     DialogueReader activeReader;
     Entry activeEntry;
 
     void Awake() => GameEventManager.FlagAdded += OnFlagAdded;
+
+    void Start()
+    {
+        if (checkFlagOnStart)
+            CheckExistingFlags();
+    }
 
     void OnDestroy()
     {
@@ -41,12 +51,30 @@ public class FlagDialogueTrigger : MonoBehaviour
             TryPlay(entries[i], flag);
     }
 
+    void CheckExistingFlags()
+    {
+        if (entries == null)
+            return;
+
+        for (int i = 0; i < entries.Length; i++)
+        {
+            Entry entry = entries[i];
+            if (entry == null || string.IsNullOrWhiteSpace(entry.whenFlag))
+                continue;
+
+            string flag = entry.whenFlag.Trim();
+            if (GameEventManager.Has(flag))
+                TryPlay(entry, flag);
+        }
+    }
+
     void TryPlay(Entry entry, string flag)
     {
         if (entry == null || !FlagMatches(entry.whenFlag, flag))
             return;
 
-        if (entry.onlyOnce && triggeredFlags.Contains(flag))
+        string key = entry.whenFlag.Trim();
+        if (entry.onlyOnce && triggeredFlags.Contains(key))
             return;
 
         if (entry.dialogue == null)
@@ -68,7 +96,7 @@ public class FlagDialogueTrigger : MonoBehaviour
         if (reader.IsPlaying)
             return;
 
-        triggeredFlags.Add(flag);
+        triggeredFlags.Add(key);
         activeEntry = entry;
         activeReader = reader;
         reader.ReadingFinished -= OnDialogueFinished;

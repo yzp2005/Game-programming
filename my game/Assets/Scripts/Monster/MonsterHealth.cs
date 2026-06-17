@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -26,6 +27,11 @@ public class MonsterHealth : MonoBehaviour
     [SerializeField] float destroyDelay = 5f;
     [SerializeField] bool disableCollidersOnDeath = true;
 
+    [Header("受击碰撞")]
+    [SerializeField] bool autoFitHitCollider = true;
+    [Tooltip("相对 Renderer 包围盒的缩放，Dragon 等大型怪可略大于 1")]
+    [SerializeField] float hitColliderPadding = 1.05f;
+
     public event Action<float, float> OnHealthChanged;
     public event Action<float> OnDamaged;
     public event Action OnDeath;
@@ -46,8 +52,21 @@ public class MonsterHealth : MonoBehaviour
         animParamHash = Animator.StringToHash(animParameter);
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
         IsDead = currentHealth <= 0f;
+        EnsureSolidHitCollider();
         if (IsDead)
             HandleDeath();
+    }
+
+    void Start()
+    {
+        if (autoFitHitCollider)
+            StartCoroutine(RefitHitColliderNextFrame());
+    }
+
+    IEnumerator RefitHitColliderNextFrame()
+    {
+        yield return null;
+        RefitRootHitColliderFromBounds();
     }
 
     void Update()
@@ -139,6 +158,83 @@ public class MonsterHealth : MonoBehaviour
     void NotifyHealthChanged()
     {
         OnHealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+
+    void EnsureSolidHitCollider()
+    {
+        if (HasSolidHitCollider())
+            return;
+
+        CapsuleCollider body = GetComponent<CapsuleCollider>();
+        if (body == null)
+        {
+            body = gameObject.AddComponent<CapsuleCollider>();
+            body.center = new Vector3(0f, 1f, 0f);
+            body.height = 2f;
+            body.radius = 0.5f;
+        }
+
+        body.isTrigger = false;
+        body.enabled = true;
+    }
+
+    bool HasSolidHitCollider()
+    {
+        foreach (Collider col in GetComponentsInChildren<Collider>())
+        {
+            if (col == null || !col.enabled || col.isTrigger)
+                continue;
+
+            if (col is MeshCollider meshCol && !meshCol.convex)
+                continue;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    void RefitRootHitColliderFromBounds()
+    {
+        if (!TryGetBodyBounds(out Bounds bounds))
+            return;
+
+        CapsuleCollider body = GetComponent<CapsuleCollider>();
+        if (body == null)
+            body = gameObject.AddComponent<CapsuleCollider>();
+
+        Vector3 localCenter = transform.InverseTransformPoint(bounds.center);
+        body.center = localCenter;
+        body.direction = 1;
+        body.height = Mathf.Max(bounds.size.y, bounds.size.x, bounds.size.z) * hitColliderPadding;
+        body.radius = Mathf.Max(bounds.extents.x, bounds.extents.z) * hitColliderPadding;
+        body.isTrigger = false;
+        body.enabled = true;
+    }
+
+    bool TryGetBodyBounds(out Bounds bounds)
+    {
+        bounds = default;
+        bool hasBounds = false;
+
+        foreach (Renderer renderer in GetComponentsInChildren<Renderer>())
+        {
+            if (renderer == null || renderer is ParticleSystemRenderer)
+                continue;
+
+            if (renderer.GetComponentInParent<Canvas>() != null)
+                continue;
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+                bounds.Encapsulate(renderer.bounds);
+        }
+
+        return hasBounds;
     }
 
     void OnValidate()

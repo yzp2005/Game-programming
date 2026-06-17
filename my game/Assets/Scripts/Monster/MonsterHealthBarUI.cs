@@ -2,8 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// 用 UI Image 宽度表示血量，受伤时宽度平滑减少（非瞬间跳变）。
+/// 监听同物体上的 MonsterHealth（或旧版 Health）。
 /// </summary>
-[RequireComponent(typeof(MonsterHealth))]
 public class MonsterHealthBarUI : MonoBehaviour
 {
     [SerializeField] RectTransform fillBar;
@@ -14,14 +14,22 @@ public class MonsterHealthBarUI : MonoBehaviour
     [Tooltip("数值越大，血条跟得越快")]
     [SerializeField] float smoothSpeed = 12f;
 
-    MonsterHealth health;
+    MonsterHealth monsterHealth;
+    Health legacyHealth;
     float maxBarWidth;
     float targetPercent = 1f;
     float displayPercent = 1f;
 
     void Awake()
     {
-        health = GetComponent<MonsterHealth>();
+        monsterHealth = GetComponent<MonsterHealth>();
+        legacyHealth = monsterHealth == null ? GetComponent<Health>() : null;
+
+        if (monsterHealth == null && legacyHealth == null)
+        {
+            Debug.LogWarning($"{name}: MonsterHealthBarUI 需要 MonsterHealth 或 Health 组件。", this);
+            return;
+        }
 
         if (fillBar == null)
         {
@@ -30,19 +38,37 @@ public class MonsterHealthBarUI : MonoBehaviour
         }
 
         maxBarWidth = fullWidth > 0f ? fullWidth : fillBar.sizeDelta.x;
-        health.OnHealthChanged += OnHealthChanged;
-        health.OnDeath += OnDeath;
 
-        targetPercent = health.HealthPercent;
+        if (monsterHealth != null)
+        {
+            monsterHealth.OnHealthChanged += OnHealthChanged;
+            monsterHealth.OnDeath += OnDeath;
+            targetPercent = monsterHealth.HealthPercent;
+        }
+        else
+        {
+            legacyHealth.OnHealthChanged += OnHealthChanged;
+            legacyHealth.OnDeath += OnDeath;
+            targetPercent = legacyHealth.HealthPercent;
+        }
+
         displayPercent = targetPercent;
         ApplyWidth(displayPercent);
     }
 
     void OnDestroy()
     {
-        if (health == null) return;
-        health.OnHealthChanged -= OnHealthChanged;
-        health.OnDeath -= OnDeath;
+        if (monsterHealth != null)
+        {
+            monsterHealth.OnHealthChanged -= OnHealthChanged;
+            monsterHealth.OnDeath -= OnDeath;
+        }
+
+        if (legacyHealth != null)
+        {
+            legacyHealth.OnHealthChanged -= OnHealthChanged;
+            legacyHealth.OnDeath -= OnDeath;
+        }
     }
 
     void Update()
@@ -71,6 +97,8 @@ public class MonsterHealthBarUI : MonoBehaviour
 
     void OnDeath()
     {
+        targetPercent = 0f;
+
         if (hideOnDeath && fillBar != null)
             fillBar.gameObject.SetActive(false);
     }

@@ -1516,7 +1516,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 0.1, y: 0.1, z: 1}
   m_Center: {x: 0.67052305, y: -1.5316947, z: 0.21675396}
@@ -2051,11 +2051,11 @@ GameObject:
   m_Component:
   - component: {fileID: 8871054810056976829}
   - component: {fileID: 8789049847763695568}
-  - component: {fileID: 3470301914212159501}
   - component: {fileID: 7308677978326716911}
   - component: {fileID: 348136144413430357}
   - component: {fileID: 2145535987643203298}
   - component: {fileID: 6819410337351923241}
+  - component: {fileID: 2622388502586148373}
   m_Layer: 7
   m_Name: SkeletonPBRMaskTint
   m_TagString: Untagged
@@ -2071,8 +2071,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7644992074330584359}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0.9455014, z: -0, w: 0.3256183}
-  m_LocalPosition: {x: -3.139, y: 0, z: -1.022}
+  m_LocalRotation: {x: 0, y: -0.9455015, z: 0, w: 0.3256176}
+  m_LocalPosition: {x: -3.259, y: 0, z: -1.024}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2105,29 +2105,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!136 &3470301914212159501
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7644992074330584359}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.5
-  m_Height: 1.7
-  m_Direction: 1
-  m_Center: {x: 0, y: 0.85, z: -0}
 --- !u!114 &7308677978326716911
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2147,8 +2124,8 @@ MonoBehaviour:
   idleAnimValue: 0
   runAnimValue: 1
   attackAnimValue: 2
-  coreAttackDamage: 25
-  coreAttackInterval: 1
+  coreAttackDamage: 10
+  attackHitNormalizedTime: 0.45
 --- !u!114 &348136144413430357
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2171,6 +2148,8 @@ MonoBehaviour:
   destroyOnDeath: 1
   destroyDelay: 5
   disableCollidersOnDeath: 1
+  autoFitHitCollider: 0
+  hitColliderPadding: 1.05
 --- !u!114 &2145535987643203298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2195,7 +2174,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7644992074330584359}
   serializedVersion: 4
-  m_Mass: 1
+  m_Mass: 3
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -2214,6 +2193,29 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 80
   m_CollisionDetection: 0
+--- !u!136 &2622388502586148373
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7644992074330584359}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.55
+  m_Height: 1.84
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.92, z: 0}
 --- !u!1 &7646167913701688291
 GameObject:
   m_ObjectHideFlags: 0

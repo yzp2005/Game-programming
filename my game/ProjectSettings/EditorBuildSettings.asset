@@ -11,4 +11,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/North Village.unity
     guid: 027d7e208471a0a4bb6c05ae982e9c6d
+  - enabled: 1
+    path: Assets/Scenes/Main Menu.unity
+    guid: 2960f44db7b1c394a9786b18909e6182
   m_configObjects: {}

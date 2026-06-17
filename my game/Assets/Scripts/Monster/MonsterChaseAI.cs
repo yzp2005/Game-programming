@@ -2,6 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// eanimation：0=待机，1=移动，2=攻击。路径由 MonsterSpawner 通过 Configure 注入。
+/// 进入/离开攻击以 MonsterPath.DestinationRadius 为准；路点仍用 arriveDistance。
 /// </summary>
 [DisallowMultipleComponent]
 public class MonsterChaseAI : MonoBehaviour
@@ -14,20 +15,22 @@ public class MonsterChaseAI : MonoBehaviour
     [SerializeField] int runAnimValue = 1;
     [SerializeField] int attackAnimValue = 2;
 
-    [Header("攻击核心")]
-    [SerializeField] float coreAttackDamage = 25f;
-    [SerializeField] float coreAttackInterval = 1f;
+    [Header("核心伤害")]
+    [SerializeField] float coreAttackDamage = 10f;
+    [Range(0f, 1f)] [SerializeField] float attackHitNormalizedTime = 0.45f;
 
+    MonsterPath monsterPath;
     Transform[] waypoints;
     Transform destination;
-    MonsterPath path;
-    CoreHealth coreHealth;
     int waypointIndex;
-    float nextCoreAttackTime;
+    bool attacking;
 
     Animator animator;
     int animHash;
     int currentAnim = -1;
+    CoreHealth coreHealth;
+    bool damageDealtThisSwing;
+    bool attackEndHandled;
 
     void Awake()
     {
@@ -35,32 +38,48 @@ public class MonsterChaseAI : MonoBehaviour
         animHash = Animator.StringToHash(animParameter);
     }
 
-    public void Configure(MonsterPath monsterPath)
+    public void Configure(MonsterPath path)
     {
-        if (monsterPath == null) return;
+        if (path == null)
+            return;
 
-        path = monsterPath;
-        waypoints = monsterPath.Waypoints;
-        destination = monsterPath.Destination;
-        coreHealth = destination != null ? destination.GetComponent<CoreHealth>() : null;
+        monsterPath = path;
+        waypoints = path.Waypoints;
+        destination = path.Destination;
         waypointIndex = 0;
+        attacking = false;
         currentAnim = -1;
-        nextCoreAttackTime = 0f;
+        ResetAttackSwingState();
+        ResolveCoreHealth();
+    }
+
+    void ResetAttackSwingState()
+    {
+        damageDealtThisSwing = false;
+        attackEndHandled = false;
     }
 
     void Update()
     {
-        if (TryGetComponent(out MonsterHealth health) && health.IsDead)
+        if (IsDead())
             return;
 
-        if (path != null && path.IsInDestinationRange(transform.position))
+        if (attacking)
         {
-            if (destination != null)
-                FaceFlat(destination.position);
-
-            TryAttackCore();
-            SetAnim(attackAnimValue);
-            return;
+            if (ShouldLeaveAttack())
+            {
+                attacking = false;
+                ResetAttackSwingState();
+            }
+            else
+            {
+                if (destination != null)
+                    FaceFlat(destination.position);
+                SetAnim(attackAnimValue);
+                UpdateCoreAttackDamage();
+                TryRepeatAttackAnimation();
+                return;
+            }
         }
 
         Transform target = GetMoveTarget();
@@ -70,11 +89,18 @@ public class MonsterChaseAI : MonoBehaviour
             return;
         }
 
-        Vector3 flat = FlatOnGround(target.position);
-        if (Reached(flat))
+        if (IsHeadingToDestination() && IsInAttackRange())
         {
-            if (HasMoreWaypoints())
-                waypointIndex++;
+            attacking = true;
+            ResetAttackSwingState();
+            SetAnim(attackAnimValue);
+            return;
+        }
+
+        Vector3 flat = FlatOnGround(target.position);
+        if (!IsHeadingToDestination() && Reached(flat))
+        {
+            waypointIndex++;
             return;
         }
 
@@ -83,18 +109,46 @@ public class MonsterChaseAI : MonoBehaviour
         SetAnim(runAnimValue);
     }
 
+    bool IsDead()
+    {
+        if (TryGetComponent(out MonsterHealth monsterHealth) && monsterHealth.IsDead)
+            return true;
+
+        if (TryGetComponent(out Health health) && health.IsDead)
+            return true;
+
+        return false;
+    }
+
     Transform GetMoveTarget()
     {
-        if (HasMoreWaypoints())
+        if (waypoints != null && waypointIndex < waypoints.Length)
             return waypoints[waypointIndex];
-
-        // 路点走完后只朝范围中心靠近；进入 MonsterPath 球形范围即攻击，不必贴中心点
         return destination;
     }
 
-    bool HasMoreWaypoints()
+    bool IsHeadingToDestination()
     {
-        return waypoints != null && waypointIndex < waypoints.Length;
+        return destination != null && (waypoints == null || waypointIndex >= waypoints.Length);
+    }
+
+    bool IsInAttackRange()
+    {
+        if (monsterPath != null)
+            return monsterPath.IsInDestinationRange(transform.position);
+
+        if (destination == null)
+            return false;
+
+        Vector3 pos = transform.position;
+        Vector3 center = destination.position;
+        pos.y = center.y;
+        return Vector3.Distance(pos, center) <= arriveDistance;
+    }
+
+    bool ShouldLeaveAttack()
+    {
+        return !IsInAttackRange();
     }
 
     bool Reached(Vector3 flatTarget)
@@ -114,7 +168,8 @@ public class MonsterChaseAI : MonoBehaviour
     {
         Vector3 dir = world - transform.position;
         dir.y = 0f;
-        if (dir.sqrMagnitude < 0.0001f) return;
+        if (dir.sqrMagnitude < 0.0001f)
+            return;
 
         Quaternion rot = Quaternion.LookRotation(dir.normalized, Vector3.up);
         transform.rotation = Quaternion.Slerp(transform.rotation, rot, rotationSpeed * Time.deltaTime);
@@ -124,27 +179,90 @@ public class MonsterChaseAI : MonoBehaviour
     {
         Vector3 dir = world - transform.position;
         dir.y = 0f;
-        if (dir.sqrMagnitude < 0.0001f) return;
+        if (dir.sqrMagnitude < 0.0001f)
+            return;
 
         transform.position += dir.normalized * (moveSpeed * Time.deltaTime);
     }
 
     void SetAnim(int value)
     {
-        if (animator == null || currentAnim == value) return;
+        if (animator == null || currentAnim == value)
+            return;
+
         currentAnim = value;
         animator.SetInteger(animHash, value);
     }
 
-    void TryAttackCore()
+    void ResolveCoreHealth()
     {
+        coreHealth = null;
+        if (destination == null)
+            return;
+
+        if (destination.TryGetComponent(out CoreHealth health))
+            coreHealth = health;
+        else
+            coreHealth = destination.GetComponentInParent<CoreHealth>();
+    }
+
+    void UpdateCoreAttackDamage()
+    {
+        if (animator == null || coreAttackDamage <= 0f)
+            return;
+
+        if (coreHealth == null)
+            ResolveCoreHealth();
+
         if (coreHealth == null || coreHealth.IsDestroyed)
             return;
 
-        if (Time.time < nextCoreAttackTime)
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        if (!IsAttackAnimatorState(state))
             return;
 
-        nextCoreAttackTime = Time.time + coreAttackInterval;
+        if (damageDealtThisSwing)
+            return;
+
+        if (state.normalizedTime % 1f < attackHitNormalizedTime)
+            return;
+
+        damageDealtThisSwing = true;
         coreHealth.TakeDamage(coreAttackDamage);
+    }
+
+    void TryRepeatAttackAnimation()
+    {
+        if (animator == null)
+            return;
+
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        if (!IsAttackAnimatorState(state))
+        {
+            attackEndHandled = false;
+            return;
+        }
+
+        float phase = state.normalizedTime % 1f;
+        if (phase < 0.95f)
+        {
+            attackEndHandled = false;
+            return;
+        }
+
+        if (attackEndHandled)
+            return;
+
+        attackEndHandled = true;
+        damageDealtThisSwing = false;
+        currentAnim = -1;
+        animator.SetInteger(animHash, idleAnimValue);
+        currentAnim = -1;
+        SetAnim(attackAnimValue);
+    }
+
+    static bool IsAttackAnimatorState(AnimatorStateInfo state)
+    {
+        return state.IsName("Attack01") || state.IsName("Attack02");
     }
 }

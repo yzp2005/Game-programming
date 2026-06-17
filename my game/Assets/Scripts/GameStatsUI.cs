@@ -17,8 +17,15 @@ public class GameStatsUI : MonoBehaviour
 
     [Header("初始值")]
     [SerializeField] int startingChocolate = 10;
+    [Tooltip("0 表示不限制人数")]
+    [SerializeField] int maxPopulation = 0;
     [SerializeField] bool autoStartOnPlay = true;
     [SerializeField] bool countOnlyMonsterKills = true;
+
+    [Header("Kill reward")]
+    [SerializeField] [Range(0f, 1f)] float killChocolateDropChance = 0.4f;
+    [SerializeField] int killChocolateDropMin = 1;
+    [SerializeField] int killChocolateDropMax = 2;
 
     float elapsedTime;
     int killCount;
@@ -28,6 +35,8 @@ public class GameStatsUI : MonoBehaviour
 
     public float ElapsedTime => elapsedTime;
     public bool IsTimerRunning => isRunning;
+    public int PlacedPopulation => placedPopulation;
+    public bool CanPlaceMore => maxPopulation <= 0 || placedPopulation < maxPopulation;
 
     void Awake()
     {
@@ -95,6 +104,9 @@ public class GameStatsUI : MonoBehaviour
     public bool TryPlaceNpc(int chocolateCost)
     {
         chocolateCost = Mathf.Max(0, chocolateCost);
+        if (!CanPlaceMore)
+            return false;
+
         if (!CanAfford(chocolateCost))
             return false;
 
@@ -108,8 +120,15 @@ public class GameStatsUI : MonoBehaviour
     {
         chocolateCost = Mathf.Max(0, chocolateCost);
         chocolateRemaining += chocolateCost;
+        UnregisterPlacedNpc();
+        RefreshChocolateText();
+    }
+
+    /// <summary>移除已放置 NPC 时只减少人数，不返还巧克力。</summary>
+    public void UnregisterPlacedNpc()
+    {
         placedPopulation = Mathf.Max(0, placedPopulation - 1);
-        RefreshUI();
+        RefreshPopulationText();
     }
 
     void HandleDeath(MonsterHealth health)
@@ -122,6 +141,26 @@ public class GameStatsUI : MonoBehaviour
 
         killCount++;
         RefreshKillText();
+        TryGrantKillChocolateReward();
+    }
+
+    void TryGrantKillChocolateReward()
+    {
+        if (killChocolateDropChance <= 0f)
+            return;
+
+        if (Random.value > killChocolateDropChance)
+            return;
+
+        int min = Mathf.Max(0, killChocolateDropMin);
+        int max = Mathf.Max(min, killChocolateDropMax);
+        int amount = Random.Range(min, max + 1);
+        if (amount <= 0)
+            return;
+
+        chocolateRemaining += amount;
+        RefreshChocolateText();
+        GameMessageFeed.Post($"+{amount} chocolate from kill.", GameMessageCategory.Resource);
     }
 
     void RefreshUI()

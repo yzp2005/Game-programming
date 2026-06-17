@@ -140,9 +140,10 @@ GameObject:
   - component: {fileID: 6587013737970681099}
   - component: {fileID: 3603763001685245278}
   - component: {fileID: 6334499811850508783}
+  - component: {fileID: 7070199671813941097}
   m_Layer: 0
   m_Name: CowboyDefault
-  m_TagString: Untagged
+  m_TagString: PlacedNPC
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -230,9 +231,10 @@ MonoBehaviour:
   shootStateName: ShootSingleshot_RF02_Anim
   fireNormalizedTime: 0.35
   autoFireOnAnim: 1
+  shootAnimSpeed: 1
   firePoint: {fileID: 838018922584076533}
   projectilePrefab: {fileID: 1564468091806366, guid: f1dc4df701f37324c98ea16f41770afc, type: 3}
-  projectileDamage: 15
+  projectileDamage: 25
   aimHeightOffset: 1.2
   useLockedHit: 1
   homingHitDistance: 0.35
@@ -246,6 +248,29 @@ MonoBehaviour:
   npcAnimationCurrent: 0
   isShooting: 0
   currentTargetName: 
+--- !u!136 &7070199671813941097
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 745903242557429846}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 1
+  m_Height: 1
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!1 &864037112293280446
 GameObject:
   m_ObjectHideFlags: 0

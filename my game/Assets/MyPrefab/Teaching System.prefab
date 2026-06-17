@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4201502115466795537
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7336603597871073794}
+  - component: {fileID: 2570206863635857456}
+  m_Layer: 0
+  m_Name: Teaching System
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7336603597871073794
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4201502115466795537}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 960, y: 540, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2570206863635857456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4201502115466795537}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 065720f275a7d9d48a3cbb41b5b1854f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  entries:
+  - whenFlag: phase1_level1_teach
+    steps:
+    - clip: {fileID: 32900000, guid: a1b50c581adfb0a41be254fb710f0bf3, type: 3}
+      description: Use WASD to move. Hold left mouse to rotate camera, right mouse
+        to aim. Left click to fire while aiming.
+    onlyOnce: 1
+    flagsToAddOnClose:
+    - phase1_level1
+    flagsToRemoveOnClose:
+    - phase1_level1_teach
+  - whenFlag: fight_level1_teach
+    steps:
+    - clip: {fileID: 32900000, guid: 09096b919e810db4982d62ccac08593e, type: 3}
+      description: Monsters keep spawning from spawn points.
+    - clip: {fileID: 32900000, guid: 22b2ba40c14a21c4a9a60dfa689d6b56, type: 3}
+      description: They target the DawnCore on sight.
+    - clip: {fileID: 32900000, guid: 0bcecc8d814cfe24bbf6eccf01a114c1, type: 3}
+      description: You may command villagers for defense. Press E to deploy within
+        available zones, and press E once more to exit deployment mode.
+    - clip: {fileID: 32900000, guid: 0bcecc8d814cfe24bbf6eccf01a114c1, type: 3}
+      description: You may command villagers for defense. Press E to deploy within
+        available zones, and press E once more to exit deployment mode.
+    - clip: {fileID: 32900000, guid: 5d1eaf3f8666baa4b907296fa342477b, type: 3}
+      description: Villagers automatically attack enemies in range.
+    onlyOnce: 1
+    flagsToAddOnClose:
+    - fight_level1
+    flagsToRemoveOnClose:
+    - fight_level1_teach
+  checkFlagOnStart: 1

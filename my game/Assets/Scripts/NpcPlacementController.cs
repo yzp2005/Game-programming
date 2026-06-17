@@ -72,6 +72,7 @@ public class NpcPlacementController : MonoBehaviour
             && registry != null
             && previewStage != null
             && registry.CanPlace(previewStage.CurrentDisplayIndex)
+            && CanPlaceMoreSlot()
             && CanAffordCurrentSlot();
 
         if (PlayerInputLock.IsLocked || PlayerTransform == null)
@@ -97,8 +98,13 @@ public class NpcPlacementController : MonoBehaviour
 
         UpdatePreviewTransform();
 
-        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI() && IsPreviewPlacementValid())
-            PlacePreview();
+        if (Input.GetMouseButtonDown(placeMouseButton) && !IsPointerOverUI())
+        {
+            if (IsPreviewPlacementValid())
+                PlacePreview();
+            else
+                PostPlacementBlockedWarning();
+        }
     }
 
     void OnDisable()
@@ -239,7 +245,10 @@ public class NpcPlacementController : MonoBehaviour
 
         int cost = registry.GetChocolateCost(previewStage.CurrentDisplayIndex);
         if (GameStatsUI.Instance != null && !GameStatsUI.Instance.TryPlaceNpc(cost))
+        {
+            PostPlacementBlockedWarning();
             return;
+        }
 
         Vector3 position = previewInstance.transform.position;
         Quaternion rotation = previewInstance.transform.rotation;
@@ -264,6 +273,15 @@ public class NpcPlacementController : MonoBehaviour
             return;
         }
 
+        if (zone == null)
+        {
+            NpcPlacementOccupant occupant = placed.GetComponent<NpcPlacementOccupant>()
+                ?? placed.AddComponent<NpcPlacementOccupant>();
+            occupant.Bind(null);
+        }
+
+        GameMessageFeed.Post($"Placed {placed.name} (-{cost})", GameMessageCategory.Placement);
+
         NpcPlacementZone.RefreshPlacementModeVisuals(true);
         SpawnPreview();
     }
@@ -286,8 +304,38 @@ public class NpcPlacementController : MonoBehaviour
         return GameStatsUI.Instance.CanAfford(registry.GetChocolateCost(previewStage.CurrentDisplayIndex));
     }
 
+    bool CanPlaceMoreSlot()
+    {
+        if (GameStatsUI.Instance == null)
+            return true;
+
+        return GameStatsUI.Instance.CanPlaceMore;
+    }
+
+    void PostPlacementBlockedWarning()
+    {
+        if (registry == null || previewStage == null)
+            return;
+
+        if (GameStatsUI.Instance == null)
+            return;
+
+        if (!GameStatsUI.Instance.CanPlaceMore)
+        {
+            GameMessageFeed.Post("Population limit reached.", GameMessageCategory.Warning);
+            return;
+        }
+
+        int cost = registry.GetChocolateCost(previewStage.CurrentDisplayIndex);
+        if (!GameStatsUI.Instance.CanAfford(cost))
+            GameMessageFeed.Post("Not enough chocolate to place.", GameMessageCategory.Warning);
+    }
+
     bool IsPreviewPlacementValid()
     {
+        if (!CanPlaceMoreSlot())
+            return false;
+
         if (!CanAffordCurrentSlot())
             return false;
 
@@ -665,7 +713,7 @@ public class NpcPlacementController : MonoBehaviour
 
         foreach (Animator animator in root.GetComponentsInChildren<Animator>(true))
         {
-            if (animator == null)
+            if (animator == null || !animator.gameObject.activeInHierarchy)
                 continue;
 
             animator.enabled = true;

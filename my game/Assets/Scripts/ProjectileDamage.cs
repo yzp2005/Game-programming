@@ -29,6 +29,13 @@ public class ProjectileDamage : MonoBehaviour
     {
         MonsterHealth health = col.GetComponentInParent<MonsterHealth>();
         if (health != null && !health.IsDead)
+        {
             health.TakeDamage(damage);
+            return;
+        }
+
+        Health legacy = col.GetComponentInParent<Health>();
+        if (legacy != null && !legacy.IsDead)
+            legacy.TakeDamage(damage);
     }
 }

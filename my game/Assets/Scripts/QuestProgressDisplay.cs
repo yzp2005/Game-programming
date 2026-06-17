@@ -12,6 +12,8 @@ public class QuestProgressDisplay : MonoBehaviour
 {
     public static QuestProgressDisplay Instance { get; private set; }
 
+    const string ResourcesPrefabPath = "QuestProgressDisplay";
+
     [Serializable]
     public class QuestEntry
     {
@@ -43,6 +45,28 @@ public class QuestProgressDisplay : MonoBehaviour
 
     Coroutine refreshRoutine;
     QuestEntry lastAppliedEntry;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void BootstrapEnsureInstance()
+    {
+        EnsureInstance();
+    }
+
+    /// <summary>保证 DDOL 单例存在（主菜单继续游戏时不会经过 Suntail Village 场景）。</summary>
+    public static void EnsureInstance()
+    {
+        if (Instance != null)
+            return;
+
+        if (FindObjectOfType<QuestProgressDisplay>() != null)
+            return;
+
+        GameObject prefab = Resources.Load<GameObject>(ResourcesPrefabPath);
+        if (prefab == null)
+            return;
+
+        Instantiate(prefab);
+    }
 
     void Awake()
     {

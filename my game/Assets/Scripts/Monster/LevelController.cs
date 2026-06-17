@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 监听 GameEventManager.FlagAdded 开波；WaveManager 刷怪结束后增删 Flag。
+/// 监听 GameEventManager 标签开波；进场景时若 startWhenFlag 已存在也会开波。WaveManager 结束后增删 Flag。
 /// </summary>
 [DisallowMultipleComponent]
 public class LevelController : MonoBehaviour
@@ -11,7 +11,7 @@ public class LevelController : MonoBehaviour
     [Serializable]
     public class WaveEntry
     {
-        [Tooltip("首次出现此 flag 时开启本波（GameEventManager.Set）")]
+        [Tooltip("存在此 flag 时开启本波（Set 瞬间或进场景时已存在）")]
         public string startWhenFlag;
 
         [Tooltip("同一波是否只触发一次")]
@@ -30,6 +30,10 @@ public class LevelController : MonoBehaviour
 
     [SerializeField] WaveEntry[] waves;
 
+    [Header("进场景")]
+    [Tooltip("加载场景后，若已有 startWhenFlag，也尝试开波（读档、再次进入本场景）")]
+    [SerializeField] bool checkFlagOnStart = true;
+
     int activeWaveIndex = -1;
     WaveManager activeWaveManager;
     readonly HashSet<int> startedWaveIndices = new HashSet<int>();
@@ -42,6 +46,11 @@ public class LevelController : MonoBehaviour
     void OnEnable()
     {
         GameEventManager.FlagAdded += OnGameFlagAdded;
+    }
+
+    void Start()
+    {
+        CheckExistingFlags();
     }
 
     void OnDisable()
@@ -57,14 +66,44 @@ public class LevelController : MonoBehaviour
 
         for (int i = 0; i < waves.Length; i++)
         {
-            if (waves[i].startWhenFlag != flag)
+            if (!FlagMatches(waves[i].startWhenFlag, flag))
                 continue;
 
-            if (waves[i].startOnlyOnce && startedWaveIndices.Contains(i))
-                continue;
-
-            StartWave(i);
+            TryStartWave(i, respectStartOnlyOnce: true);
         }
+    }
+
+    void CheckExistingFlags()
+    {
+        if (!checkFlagOnStart || waves == null)
+            return;
+
+        for (int i = 0; i < waves.Length; i++)
+        {
+            WaveEntry entry = waves[i];
+            if (entry == null || string.IsNullOrWhiteSpace(entry.startWhenFlag))
+                continue;
+
+            if (!GameEventManager.Has(entry.startWhenFlag.Trim()))
+                continue;
+
+            TryStartWave(i, respectStartOnlyOnce: false);
+        }
+    }
+
+    void TryStartWave(int waveIndex, bool respectStartOnlyOnce)
+    {
+        if (waves == null || waveIndex < 0 || waveIndex >= waves.Length)
+            return;
+
+        WaveEntry entry = waves[waveIndex];
+        if (entry == null)
+            return;
+
+        if (respectStartOnlyOnce && entry.startOnlyOnce && startedWaveIndices.Contains(waveIndex))
+            return;
+
+        StartWave(waveIndex);
     }
 
     void StartWave(int waveIndex)
@@ -179,5 +218,12 @@ public class LevelController : MonoBehaviour
 
         activeWaveIndex = -1;
         activeWaveManager = null;
+    }
+
+    static bool FlagMatches(string expected, string actual)
+    {
+        return !string.IsNullOrWhiteSpace(expected)
+            && !string.IsNullOrEmpty(actual)
+            && string.Equals(expected.Trim(), actual.Trim(), StringComparison.Ordinal);
     }
 }
