@@ -28,6 +28,7 @@ public class TMPAlphaPulse : MonoBehaviour
     {
         tmp = GetComponent<TMP_Text>();
         baseColor = tmp.color;
+        
         phase = randomPhaseOnStart ? Random.Range(0f, Mathf.PI * 2f) : 0f;
     }
 

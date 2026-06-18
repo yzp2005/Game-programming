@@ -7,7 +7,8 @@ public static class FlagEventActions
         {
             foreach (string flag in flagsToAdd)
             {
-                if (!string.IsNullOrWhiteSpace(flag))
+
+                    if (!string.IsNullOrWhiteSpace(flag))
                     GameEventManager.Set(flag.Trim());
             }
         }
@@ -16,6 +17,8 @@ public static class FlagEventActions
         {
             foreach (string flag in flagsToRemove)
             {
+
+
                 if (!string.IsNullOrWhiteSpace(flag))
                     GameEventManager.Remove(flag.Trim());
             }

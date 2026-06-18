@@ -570,7 +570,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   newGameImage: {fileID: 1487634499}
   continueImage: {fileID: 1270849066}
-  gameplaySceneBuildIndex: 0
+  gameplaySceneBuildIndex: 1
 --- !u!1 &1252988343
 GameObject:
   m_ObjectHideFlags: 0

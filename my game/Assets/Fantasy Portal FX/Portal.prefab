@@ -87,7 +87,7 @@ MonoBehaviour:
     - enterenabled
     promptMessage: Teleport[F]
     lockedPromptMessage: Did you forget sth QAQ
-    targetSceneBuildIndex: 1
+    targetSceneBuildIndex: 2
     targetSpawnId: FromVillage
     flagsToAddOnTeleport:
     - phase3_level1
@@ -99,7 +99,7 @@ MonoBehaviour:
     - enterenabled
     promptMessage: Teleport[F]
     lockedPromptMessage: Did you forget sth QAQ
-    targetSceneBuildIndex: 1
+    targetSceneBuildIndex: 2
     targetSpawnId: FromVillage
     flagsToAddOnTeleport:
     - phase3_level2

@@ -8,7 +8,7 @@
 
 ## One-sentence Idea
 
-A 3D single-player tower defense game where you play as a wandering mage who befriends villagers and leads them in defending their home against waves of incoming enemies.
+A 3D single-player animation game mixing with tower defense and story telling, where you play as a Rover who befriends villagers and leads them in defending their home against waves of incoming enemies.
 
 ------
 

@@ -1,6 +1,6 @@
 using System;
 
-/// <summary>bg_audio.json：一条完整配音 + 每句起止时间（秒）。</summary>
+/// <summary>bg_audio.json一条完整配音 + 每句起止时间（秒）。</summary>
 [Serializable]
 public class BgAudioSegment
 {

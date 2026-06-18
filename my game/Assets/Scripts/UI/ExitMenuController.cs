@@ -18,7 +18,7 @@ public class ExitMenuController : MonoBehaviour
     [Header("UI")]
     [Tooltip("暂停时显示的面板（如 Panel）；留空则找子物体 Panel")]
     [SerializeField] GameObject menuRoot;
-    [Tooltip("点击此 TMP 文字退出游戏；留空则自动找名为 l-click 的子物体")]
+    [Tooltip("点击此 TMP 文字退出游戏；留空则自动找 l-click")]
     [SerializeField] TMP_Text exitClickText;
     [Tooltip("若 Exit 仍用 Legacy Text，可拖到这里；留空则自动找 l-click 上的 Text")]
     [SerializeField] Text exitClickLegacyText;
@@ -173,6 +173,15 @@ public class ExitMenuController : MonoBehaviour
             if (exitClickText == null)
                 exitClickLegacyText = child.GetComponent<Text>();
             return;
+        }
+
+        foreach (TMP_Text tmp in menuRoot.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (tmp.text.IndexOf("exit", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                exitClickText = tmp;
+                return;
+            }
         }
     }
 

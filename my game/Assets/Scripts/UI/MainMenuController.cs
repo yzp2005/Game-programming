@@ -12,8 +12,8 @@ public class MainMenuController : MonoBehaviour
     [SerializeField] Image newGameImage;
     [SerializeField] Image continueImage;
 
-    [Tooltip("Build Settings 里第一个游戏场景的 buildIndex（当前 Suntail Village = 0）")]
-    [SerializeField] int gameplaySceneBuildIndex;
+    [Tooltip("Build Settings 里 Suntail Village 的 buildIndex（Main Menu=0, Suntail=1, North=2）")]
+    [SerializeField] int gameplaySceneBuildIndex = 1;
 
     void OnEnable()
     {

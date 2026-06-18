@@ -473,7 +473,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   arriveDistance: 0.4
-  moveSpeed: 1.5
+  moveSpeed: 3
   rotationSpeed: 8
   animParameter: eanimation
   idleAnimValue: 0
@@ -481,7 +481,6 @@ MonoBehaviour:
   attackAnimValue: 2
   coreAttackDamage: 50
   attackHitNormalizedTime: 0.45
-  coreAttackInterval: 1.2
 --- !u!114 &5823290055679046176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -494,8 +493,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3374b3184658ac47b28e8f1aa78cb2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 600
-  currentHealth: 600
+  maxHealth: 800
+  currentHealth: 800
   enableRegen: 1
   regenPerSecond: 4
   regenDelayAfterDamage: 3
@@ -504,6 +503,8 @@ MonoBehaviour:
   destroyOnDeath: 1
   destroyDelay: 5
   disableCollidersOnDeath: 1
+  autoFitHitCollider: 1
+  hitColliderPadding: 1.05
 --- !u!114 &2558395504211158277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -528,7 +529,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1448088443412232807}
   serializedVersion: 4
-  m_Mass: 10
+  m_Mass: 20
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}

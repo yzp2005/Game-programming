@@ -69,6 +69,11 @@ public class MinimapController : MonoBehaviour
     readonly Dictionary<NpcPlacementZone, RectTransform> blipByPlacementZone = new Dictionary<NpcPlacementZone, RectTransform>();
     readonly Dictionary<NpcPlacementZone, bool> placementZoneOccupiedState = new Dictionary<NpcPlacementZone, bool>();
 
+    readonly HashSet<MinimapTrackable> activeTrackables = new HashSet<MinimapTrackable>();
+    readonly List<MinimapTrackable> staleTrackables = new List<MinimapTrackable>();
+    readonly HashSet<NpcPlacementZone> activeZones = new HashSet<NpcPlacementZone>();
+    readonly List<NpcPlacementZone> staleZones = new List<NpcPlacementZone>();
+
     [ContextMenu("从 Map Transform 同步 Manual Values")]
     void SyncManualFromMapTransform()
     {
@@ -86,19 +91,7 @@ public class MinimapController : MonoBehaviour
             worldTracker = MinimapWorldTracker.Instance;
 
         RebuildBounds();
-        ForceHideMinimap();
-    }
-
-    void Start()
-    {
-        ForceHideMinimap();
-    }
-
-    void ForceHideMinimap()
-    {
-        isVisible = false;
-        if (minimapRoot != null)
-            minimapRoot.SetActive(false);
+        SetVisible(false, force: true);
     }
 
     void Update()
@@ -109,19 +102,22 @@ public class MinimapController : MonoBehaviour
             return;
         }
 
-        bool shouldShow = Input.GetKey(holdKey);
-        if (!shouldShow && enableTouchHold)
-            shouldShow = IsTouchHoldingCorner();
+        bool shouldShow = Input.GetKey(holdKey)
+            || (enableTouchHold && IsTouchHoldingCorner());
 
         SetVisible(shouldShow);
 
         if (!boundsReady)
             RebuildBounds();
 
-        if (isVisible)
-            UpdatePlayerBlip();
+        MinimapWorldTracker tracker = ResolveTracker();
+        if (tracker == null)
+            return;
 
-        SyncTrackableBlips();
+        if (isVisible)
+            UpdatePlayerBlip(tracker);
+
+        SyncTrackableBlips(tracker);
         SyncPlacementZoneBlips();
     }
 
@@ -134,14 +130,14 @@ public class MinimapController : MonoBehaviour
         if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
             return false;
 
-        float nx = touch.position.x / Screen.width;
-        float ny = touch.position.y / Screen.height;
-        return touchHoldScreenRect.Contains(new Vector2(nx, ny));
+        return touchHoldScreenRect.Contains(new Vector2(
+            touch.position.x / Screen.width,
+            touch.position.y / Screen.height));
     }
 
-    void SetVisible(bool visible)
+    void SetVisible(bool visible, bool force = false)
     {
-        if (isVisible == visible)
+        if (!force && isVisible == visible)
             return;
 
         isVisible = visible;
@@ -149,19 +145,14 @@ public class MinimapController : MonoBehaviour
             minimapRoot.SetActive(visible);
 
         if (visible)
-        {
-            MinimapWorldTracker tracker = ResolveTracker();
-            tracker?.RefreshNow();
-        }
+            ResolveTracker()?.RefreshNow();
     }
 
     void RebuildBounds()
     {
         boundsReady = false;
-        minX = float.PositiveInfinity;
-        maxX = float.NegativeInfinity;
-        minZ = float.PositiveInfinity;
-        maxZ = float.NegativeInfinity;
+        minX = minZ = float.PositiveInfinity;
+        maxX = maxZ = float.NegativeInfinity;
 
         switch (boundsMode)
         {
@@ -198,9 +189,7 @@ public class MinimapController : MonoBehaviour
         }
 
         if (valid < 2)
-        {
             minX = maxX = minZ = maxZ = 0f;
-        }
     }
 
     void EncapsulatePlaneTransform(Vector3 center, Vector3 lossyScale, Quaternion rotation)
@@ -227,21 +216,14 @@ public class MinimapController : MonoBehaviour
         float width = blipContainer != null ? blipContainer.rect.width : 200f;
         float height = blipContainer != null ? blipContainer.rect.height : 200f;
 
-        float u = Mathf.InverseLerp(minX, maxX, world.x);
-        float v = Mathf.InverseLerp(minZ, maxZ, world.z);
-        u = Mathf.Clamp01(u);
-        v = Mathf.Clamp01(v);
-
+        float u = Mathf.Clamp01(Mathf.InverseLerp(minX, maxX, world.x));
+        float v = Mathf.Clamp01(Mathf.InverseLerp(minZ, maxZ, world.z));
         return new Vector2((u - 0.5f) * width, (v - 0.5f) * height);
     }
 
-    void UpdatePlayerBlip()
+    void UpdatePlayerBlip(MinimapWorldTracker tracker)
     {
-        if (playerBlip == null || blipContainer == null)
-            return;
-
-        MinimapWorldTracker tracker = ResolveTracker();
-        if (tracker == null || !tracker.CurrentPlayer.IsValid)
+        if (playerBlip == null || blipContainer == null || !tracker.CurrentPlayer.IsValid)
             return;
 
         MinimapWorldTracker.PlayerSnapshot player = tracker.CurrentPlayer;
@@ -251,16 +233,14 @@ public class MinimapController : MonoBehaviour
             playerBlip.localRotation = Quaternion.Euler(0f, 0f, -player.Yaw);
     }
 
-    void SyncTrackableBlips()
+    void SyncTrackableBlips(MinimapWorldTracker tracker)
     {
         if (blipContainer == null)
             return;
 
-        MinimapWorldTracker tracker = ResolveTracker();
-        if (tracker == null)
-            return;
-
+        activeTrackables.Clear();
         IReadOnlyList<MinimapWorldTracker.EntitySnapshot> entities = tracker.CurrentEntities;
+
         for (int i = 0; i < entities.Count; i++)
         {
             MinimapWorldTracker.EntitySnapshot snapshot = entities[i];
@@ -268,47 +248,30 @@ public class MinimapController : MonoBehaviour
                 continue;
 
             MinimapTrackable trackable = snapshot.Source;
+            activeTrackables.Add(trackable);
+
             if (!blipByTrackable.TryGetValue(trackable, out RectTransform blip))
             {
                 if (!isVisible)
                     continue;
 
-                blip = CreateBlip(snapshot.Kind);
-                blipByTrackable[trackable] = blip;
+                blipByTrackable[trackable] = CreateTrackableBlip(snapshot.Kind);
+                blip = blipByTrackable[trackable];
             }
 
             if (isVisible)
                 blip.anchoredPosition = WorldToBlipLocal(snapshot.WorldPosition);
         }
 
-        var toRemove = new List<MinimapTrackable>();
+        staleTrackables.Clear();
         foreach (KeyValuePair<MinimapTrackable, RectTransform> pair in blipByTrackable)
         {
-            MinimapTrackable trackable = pair.Key;
-            if (trackable == null)
-            {
-                if (pair.Value != null)
-                    Destroy(pair.Value.gameObject);
-                toRemove.Add(trackable);
-                continue;
-            }
-
-            bool stillTracked = false;
-            for (int i = 0; i < entities.Count; i++)
-            {
-                if (entities[i].Source == trackable)
-                {
-                    stillTracked = true;
-                    break;
-                }
-            }
-
-            if (!stillTracked)
-                toRemove.Add(trackable);
+            if (pair.Key == null || !activeTrackables.Contains(pair.Key))
+                staleTrackables.Add(pair.Key);
         }
 
-        foreach (MinimapTrackable trackable in toRemove)
-            RemoveBlip(trackable);
+        for (int i = 0; i < staleTrackables.Count; i++)
+            RemoveTrackableBlip(staleTrackables[i]);
     }
 
     void SyncPlacementZoneBlips()
@@ -316,115 +279,50 @@ public class MinimapController : MonoBehaviour
         if (blipContainer == null)
             return;
 
+        activeZones.Clear();
         IReadOnlyList<NpcPlacementZone> zones = NpcPlacementZone.RegisteredZones;
+
         for (int i = 0; i < zones.Count; i++)
         {
             NpcPlacementZone zone = zones[i];
             if (zone == null || !zone.ShowMinimapBlip)
                 continue;
 
+            activeZones.Add(zone);
             bool occupied = !zone.IsAvailable;
-            if (!blipByPlacementZone.TryGetValue(zone, out RectTransform blip)
-                || !placementZoneOccupiedState.TryGetValue(zone, out bool knownOccupied)
-                || knownOccupied != occupied)
+
+            if (blipByPlacementZone.TryGetValue(zone, out RectTransform blip)
+                && blip != null
+                && placementZoneOccupiedState.TryGetValue(zone, out bool knownOccupied)
+                && knownOccupied == occupied)
             {
-                RemovePlacementZoneBlip(zone);
                 if (isVisible)
-                {
-                    blip = CreatePlacementZoneBlip(zone, occupied);
-                    blipByPlacementZone[zone] = blip;
-                    placementZoneOccupiedState[zone] = occupied;
-                }
-            }
-
-            if (isVisible && blipByPlacementZone.TryGetValue(zone, out blip) && blip != null)
-                blip.anchoredPosition = WorldToBlipLocal(zone.MinimapWorldPosition);
-        }
-
-        var toRemove = new List<NpcPlacementZone>();
-        foreach (KeyValuePair<NpcPlacementZone, RectTransform> pair in blipByPlacementZone)
-        {
-            NpcPlacementZone zone = pair.Key;
-            if (zone == null || !zone.isActiveAndEnabled || !zone.ShowMinimapBlip)
-            {
-                if (pair.Value != null)
-                    Destroy(pair.Value.gameObject);
-                toRemove.Add(zone);
+                    blip.anchoredPosition = WorldToBlipLocal(zone.MinimapWorldPosition);
                 continue;
             }
 
-            bool stillRegistered = false;
-            for (int i = 0; i < zones.Count; i++)
-            {
-                if (zones[i] == zone)
-                {
-                    stillRegistered = true;
-                    break;
-                }
-            }
-
-            if (!stillRegistered)
-                toRemove.Add(zone);
-        }
-
-        foreach (NpcPlacementZone zone in toRemove)
             RemovePlacementZoneBlip(zone);
-    }
+            if (!isVisible)
+                continue;
 
-    void RemovePlacementZoneBlip(NpcPlacementZone zone)
-    {
-        if (zone != null && blipByPlacementZone.TryGetValue(zone, out RectTransform blip))
-        {
-            if (blip != null)
-                Destroy(blip.gameObject);
-            blipByPlacementZone.Remove(zone);
-            placementZoneOccupiedState.Remove(zone);
-        }
-    }
-
-    RectTransform CreatePlacementZoneBlip(NpcPlacementZone zone, bool occupied)
-    {
-        GameObject prefab = occupied
-            ? zone.ResolveOccupiedBlipPrefab(occupiedZoneBlipPrefab)
-            : zone.ResolveAvailableBlipPrefab(availableZoneBlipPrefab);
-
-        Color fallbackColor = occupied ? occupiedZoneFallbackColor : availableZoneFallbackColor;
-        string label = occupied ? "OccupiedZoneBlip" : "AvailableZoneBlip";
-
-        GameObject go;
-        if (prefab != null)
-        {
-            go = Instantiate(prefab, blipContainer);
-        }
-        else
-        {
-            go = new GameObject(label, typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(blipContainer, false);
-            Image image = go.GetComponent<Image>();
-            image.color = fallbackColor;
-            image.raycastTarget = false;
-            EnsureBlipSprite(image);
+            blip = CreatePlacementZoneBlip(zone, occupied);
+            blipByPlacementZone[zone] = blip;
+            placementZoneOccupiedState[zone] = occupied;
+            blip.anchoredPosition = WorldToBlipLocal(zone.MinimapWorldPosition);
         }
 
-        RectTransform rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        if (rt.sizeDelta == Vector2.zero)
-            rt.sizeDelta = defaultBlipSize;
+        staleZones.Clear();
+        foreach (KeyValuePair<NpcPlacementZone, RectTransform> pair in blipByPlacementZone)
+        {
+            if (pair.Key == null || !activeZones.Contains(pair.Key))
+                staleZones.Add(pair.Key);
+        }
 
-        rt.SetAsLastSibling();
-        return rt;
+        for (int i = 0; i < staleZones.Count; i++)
+            RemovePlacementZoneBlip(staleZones[i]);
     }
 
-    MinimapWorldTracker ResolveTracker()
-    {
-        if (worldTracker == null)
-            worldTracker = MinimapWorldTracker.Instance;
-
-        return worldTracker;
-    }
-
-    void RemoveBlip(MinimapTrackable trackable)
+    void RemoveTrackableBlip(MinimapTrackable trackable)
     {
         if (!blipByTrackable.TryGetValue(trackable, out RectTransform blip))
             return;
@@ -435,9 +333,42 @@ public class MinimapController : MonoBehaviour
         blipByTrackable.Remove(trackable);
     }
 
-    RectTransform CreateBlip(MinimapTrackable.BlipKind kind)
+    void RemovePlacementZoneBlip(NpcPlacementZone zone)
     {
-        GameObject prefab = GetBlipPrefab(kind);
+        if (zone == null || !blipByPlacementZone.TryGetValue(zone, out RectTransform blip))
+            return;
+
+        if (blip != null)
+            Destroy(blip.gameObject);
+
+        blipByPlacementZone.Remove(zone);
+        placementZoneOccupiedState.Remove(zone);
+    }
+
+    RectTransform CreateTrackableBlip(MinimapTrackable.BlipKind kind)
+    {
+        return CreateBlipRect(
+            GetBlipPrefab(kind),
+            $"MinimapBlip_{kind}",
+            GetColor(kind),
+            applyTint: true);
+    }
+
+    RectTransform CreatePlacementZoneBlip(NpcPlacementZone zone, bool occupied)
+    {
+        GameObject prefab = occupied
+            ? zone.ResolveOccupiedBlipPrefab(occupiedZoneBlipPrefab)
+            : zone.ResolveAvailableBlipPrefab(availableZoneBlipPrefab);
+
+        return CreateBlipRect(
+            prefab,
+            occupied ? "OccupiedZoneBlip" : "AvailableZoneBlip",
+            occupied ? occupiedZoneFallbackColor : availableZoneFallbackColor,
+            applyTint: prefab == null);
+    }
+
+    RectTransform CreateBlipRect(GameObject prefab, string fallbackName, Color color, bool applyTint)
+    {
         GameObject go;
         if (prefab != null)
         {
@@ -445,12 +376,8 @@ public class MinimapController : MonoBehaviour
         }
         else
         {
-            go = new GameObject($"MinimapBlip_{kind}", typeof(RectTransform), typeof(Image));
+            go = CreateFallbackBlipObject(fallbackName, color);
             go.transform.SetParent(blipContainer, false);
-            Image image = go.GetComponent<Image>();
-            image.color = GetColor(kind);
-            image.raycastTarget = false;
-            EnsureBlipSprite(image);
         }
 
         RectTransform rt = go.GetComponent<RectTransform>();
@@ -459,22 +386,39 @@ public class MinimapController : MonoBehaviour
         if (rt.sizeDelta == Vector2.zero)
             rt.sizeDelta = defaultBlipSize;
 
-        if (go.TryGetComponent(out Image prefabImage))
+        if (go.TryGetComponent(out Image image))
         {
-            prefabImage.color = GetColor(kind);
-            EnsureBlipSprite(prefabImage);
+            if (applyTint)
+                image.color = color;
+
+            EnsureBlipSprite(image);
         }
 
         rt.SetAsLastSibling();
         return rt;
     }
 
+    static GameObject CreateFallbackBlipObject(string name, Color color)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+        Image image = go.GetComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+        return go;
+    }
+
+    MinimapWorldTracker ResolveTracker()
+    {
+        if (worldTracker == null)
+            worldTracker = MinimapWorldTracker.Instance;
+
+        return worldTracker;
+    }
+
     static void EnsureBlipSprite(Image image)
     {
-        if (image.sprite != null)
-            return;
-
-        image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+        if (image.sprite == null)
+            image.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
     }
 
     Color GetColor(MinimapTrackable.BlipKind kind)
@@ -489,13 +433,10 @@ public class MinimapController : MonoBehaviour
 
     GameObject GetBlipPrefab(MinimapTrackable.BlipKind kind)
     {
-        switch (kind)
-        {
-            case MinimapTrackable.BlipKind.Friendly:
-                return friendlyBlipPrefab != null ? friendlyBlipPrefab : enemyBlipPrefab;
-            default:
-                return enemyBlipPrefab;
-        }
+        if (kind == MinimapTrackable.BlipKind.Friendly && friendlyBlipPrefab != null)
+            return friendlyBlipPrefab;
+
+        return enemyBlipPrefab;
     }
 
     void OnDrawGizmosSelected()
@@ -509,18 +450,18 @@ public class MinimapController : MonoBehaviour
         {
             foreach (Transform corner in mapCorners)
             {
-                if (corner != null)
-                {
-                    y = corner.position.y;
-                    break;
-                }
+                if (corner == null)
+                    continue;
+
+                y = corner.position.y;
+                break;
             }
         }
 
-        Vector3 a = new Vector3(minX, y, minZ);
-        Vector3 b = new Vector3(maxX, y, minZ);
-        Vector3 c = new Vector3(maxX, y, maxZ);
-        Vector3 d = new Vector3(minX, y, maxZ);
+        var a = new Vector3(minX, y, minZ);
+        var b = new Vector3(maxX, y, minZ);
+        var c = new Vector3(maxX, y, maxZ);
+        var d = new Vector3(minX, y, maxZ);
         Gizmos.color = new Color(0.2f, 1f, 0.4f, 0.9f);
         Gizmos.DrawLine(a, b);
         Gizmos.DrawLine(b, c);

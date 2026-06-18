@@ -13,8 +13,8 @@ public class TeleportPortal : MonoBehaviour
         public string promptMessage = "Teleport [F]";
         [Tooltip("条件未满足时显示；留空则不显示")]
         public string lockedPromptMessage;
-        [Tooltip("Build Settings 里 Scenes In Build 序号，从 0 开始")]
-        public int targetSceneBuildIndex = 1;
+        [Tooltip("Build Settings 里目标场景的 buildIndex（North Village = 2）")]
+        public int targetSceneBuildIndex = 2;
         [Tooltip("与目标场景 PlayerSpawnPoint 的 Spawn Id 一致")]
         public string targetSpawnId;
         public string[] flagsToAddOnTeleport;

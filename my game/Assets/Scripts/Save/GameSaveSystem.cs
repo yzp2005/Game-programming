@@ -36,8 +36,8 @@ public class GameSaveSystem : MonoBehaviour
     [Header("场景 → 出生点（每场景一个）")]
     [SerializeField] SceneSpawnEntry[] sceneSpawns =
     {
-        new SceneSpawnEntry { buildIndex = 0, spawnId = "init" },
-        new SceneSpawnEntry { buildIndex = 1, spawnId = "FromVillage" }
+        new SceneSpawnEntry { buildIndex = 1, spawnId = "init" },
+        new SceneSpawnEntry { buildIndex = 2, spawnId = "FromVillage" }
     };
 
     [Header("写入")]
@@ -326,6 +326,9 @@ public class GameSaveSystem : MonoBehaviour
             if (data.skillLoadout == null)
                 data.skillLoadout = Array.Empty<string>();
 
+            if (MigrateSaveData(data))
+                WriteToDisk(data);
+
             return data;
         }
         catch (Exception ex)
@@ -333,5 +336,28 @@ public class GameSaveSystem : MonoBehaviour
             Debug.LogWarning($"[GameSaveSystem] 读档失败: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// 旧 Build Settings 顺序（Suntail=0, North=1, Menu=2）→ 新顺序（Menu=0, Suntail=1, North=2）。
+    /// </summary>
+    static bool MigrateSaveData(GameSaveData data)
+    {
+        if (data == null || data.version >= GameSaveData.CurrentVersion)
+            return false;
+
+        int oldIndex = data.sceneBuildIndex;
+        data.sceneBuildIndex = oldIndex switch
+        {
+            0 => 1,
+            1 => 2,
+            2 => 0,
+            _ => oldIndex
+        };
+        data.version = GameSaveData.CurrentVersion;
+
+        Debug.Log(
+            $"[GameSaveSystem] 存档已迁移：sceneBuildIndex {oldIndex} → {data.sceneBuildIndex}（save v{GameSaveData.CurrentVersion}）。");
+        return true;
     }
 }

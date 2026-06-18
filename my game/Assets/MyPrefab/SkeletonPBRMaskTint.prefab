@@ -2138,8 +2138,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3374b3184658ac47b28e8f1aa78cb2c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 100
-  currentHealth: 100
+  maxHealth: 200
+  currentHealth: 200
   enableRegen: 1
   regenPerSecond: 4
   regenDelayAfterDamage: 3
@@ -2174,7 +2174,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7644992074330584359}
   serializedVersion: 4
-  m_Mass: 3
+  m_Mass: 20
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
