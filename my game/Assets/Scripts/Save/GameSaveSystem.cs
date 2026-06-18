@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 自动存档：标签、技能组或场景变化时写入 JSON（persistentDataPath/save/save.json）。
+/// 自动存档：标签或场景变化时写入 JSON（persistentDataPath/save/save.json）。
 /// 启动时若存在存档则恢复标签，并按配置加载对应场景。
 /// </summary>
 [DisallowMultipleComponent]
@@ -80,7 +80,6 @@ public class GameSaveSystem : MonoBehaviour
 
         GameEventManager.FlagAdded += OnFlagsChanged;
         GameEventManager.FlagRemoved += OnFlagsChanged;
-        SkillLoadout.Changed += OnSkillLoadoutChanged;
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
@@ -98,11 +97,8 @@ public class GameSaveSystem : MonoBehaviour
         Instance = null;
         GameEventManager.FlagAdded -= OnFlagsChanged;
         GameEventManager.FlagRemoved -= OnFlagsChanged;
-        SkillLoadout.Changed -= OnSkillLoadoutChanged;
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
-
-    void OnSkillLoadoutChanged() => RequestSave();
 
     void OnFlagsChanged(string _) => RequestSave();
 
@@ -181,7 +177,6 @@ public class GameSaveSystem : MonoBehaviour
 
         DeleteSaveFile();
         GameEventManager.RestoreFlags(Array.Empty<string>());
-        SkillLoadout.ResetForNewGame();
 
         if (Instance != null)
             Instance.suppressAutoSave = false;
@@ -203,7 +198,6 @@ public class GameSaveSystem : MonoBehaviour
                 Instance.suppressAutoSave = true;
 
             GameEventManager.RestoreFlags(data.flags);
-            SkillLoadout.Restore(data.skillLoadout);
             QuestProgressDisplay.EnsureInstance();
 
             if (Instance != null)
@@ -233,8 +227,7 @@ public class GameSaveSystem : MonoBehaviour
             version = GameSaveData.CurrentVersion,
             sceneBuildIndex = SceneManager.GetActiveScene().buildIndex,
             flags = GameEventManager.GetAllFlagsSorted() as string[]
-                   ?? Array.Empty<string>(),
-            skillLoadout = SkillLoadout.SelectedSkillIds
+                   ?? Array.Empty<string>()
         };
     }
 
@@ -244,7 +237,6 @@ public class GameSaveSystem : MonoBehaviour
             return;
 
         GameEventManager.RestoreFlags(data.flags);
-        SkillLoadout.Restore(data.skillLoadout);
     }
 
     void ApplySaveData(GameSaveData data)
@@ -323,9 +315,6 @@ public class GameSaveSystem : MonoBehaviour
             if (data.flags == null)
                 data.flags = Array.Empty<string>();
 
-            if (data.skillLoadout == null)
-                data.skillLoadout = Array.Empty<string>();
-
             if (MigrateSaveData(data))
                 WriteToDisk(data);
 
@@ -339,25 +328,37 @@ public class GameSaveSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// 旧 Build Settings 顺序（Suntail=0, North=1, Menu=2）→ 新顺序（Menu=0, Suntail=1, North=2）。
+    /// v2→v3：旧 Build Settings 顺序（Suntail=0, North=1, Menu=2）→ 新顺序（Menu=0, Suntail=1, North=2）。
+    /// v3→v4：移除 skillLoadout 字段，仅升级版本号。
     /// </summary>
     static bool MigrateSaveData(GameSaveData data)
     {
         if (data == null || data.version >= GameSaveData.CurrentVersion)
             return false;
 
-        int oldIndex = data.sceneBuildIndex;
-        data.sceneBuildIndex = oldIndex switch
-        {
-            0 => 1,
-            1 => 2,
-            2 => 0,
-            _ => oldIndex
-        };
-        data.version = GameSaveData.CurrentVersion;
+        bool changed = false;
 
-        Debug.Log(
-            $"[GameSaveSystem] 存档已迁移：sceneBuildIndex {oldIndex} → {data.sceneBuildIndex}（save v{GameSaveData.CurrentVersion}）。");
-        return true;
+        if (data.version < 3)
+        {
+            int oldIndex = data.sceneBuildIndex;
+            data.sceneBuildIndex = oldIndex switch
+            {
+                0 => 1,
+                1 => 2,
+                2 => 0,
+                _ => oldIndex
+            };
+            changed = true;
+            Debug.Log(
+                $"[GameSaveSystem] 存档已迁移：sceneBuildIndex {oldIndex} → {data.sceneBuildIndex}（save v3）。");
+        }
+
+        if (data.version < GameSaveData.CurrentVersion)
+        {
+            data.version = GameSaveData.CurrentVersion;
+            changed = true;
+        }
+
+        return changed;
     }
 }
