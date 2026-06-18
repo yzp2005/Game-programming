@@ -1,10 +1,8 @@
 # AI-Assisted Work Summary (ChatGPT & Cursor)
 In the whole development cycle of the third-person action tower defense game, I adopted AI as a development assistant. AI participated in the design, coding, debugging and documentation work of about half of the functional modules, effectively lowering the difficulty of development and improving work efficiency. The specific assisted contents are as follows:
 
-## 1. Global Event & Input Lock Module
-- Assisted in designing the underlying structure of `GameEventManager`, including `HashSet` data storage, singleton implementation and `DontDestroyOnLoad` cross-scene persistence logic.
+## 1. Input Lock Module
 - Provided implementation ideas for the input lock mechanism, helped sort out the linkage logic between input status and game states (dialogue, scene loading, cutscenes), and optimized mouse display & cursor lock switching rules.
-- Completed part of universal component `SetGameFlag` code writing to adapt to Unity built-in event system.
 
 ## 2. Asynchronous Scene Loading & Transition System
 - Assisted in implementing `SceneLoadRunner` asynchronous loading logic based on `SceneManager.LoadSceneAsync`.
